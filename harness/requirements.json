@@ -58,7 +58,8 @@
       "status": "implemented",
       "tests": [
         "tests.test_models.ProviderBoundaryTests",
-        "tests.test_vibe"
+        "tests.test_vibe",
+        "tests.test_hook_sheet"
       ],
       "acceptance": [
         "YuE2-specific request mapping belongs in its adapter.",
@@ -67,7 +68,9 @@
         "Generation and separation setup are independent.",
         "Vibe image bytes stay outside music-model inputs and public queue payloads; completed variations own separate cover and gallery artifacts.",
         "Vibe accepts at most five images, blends real normalized embeddings against at least 120 curated directions, and filters Advanced suggestions through adapter capabilities.",
-        "Every image-guided YuE2 preset suggests 8 rendering steps while temperature, top-p and top-k can vary."
+        "Every image-guided YuE2 preset suggests 8 rendering steps while temperature, top-p and top-k can vary.",
+        "Hook verifies optional local SheetSage2 and MERT artifacts independently of music profiles, validates recordings, previews melody-only transcription and maps reviewed notes or ABC into YuE2 without sending recording bytes to the music model.",
+        "SheetSage2 Hook setup requires explicit license acceptance, verifies pinned model artifacts, runs an isolated offline process and removes transient recording and score files after analysis."
       ]
     },
     {

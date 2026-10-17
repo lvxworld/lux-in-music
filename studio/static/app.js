@@ -152,7 +152,7 @@ function setupGenreTemplates() {
 
 /* ---------- state ---------- */
 
-const state = { library: [], jobs: [], current: null, adv: {}, cot: "off", variations: 1, jobsAt: 0, submitting: false };
+const state = { library: [], jobs: [], current: null, adv: {}, cot: "off", variations: 1, jobsAt: 0, submitting: false, libraryFilter: "all" };
 const audio = $("audio");
 
 /* ---------- generative covers ---------- */
@@ -365,7 +365,8 @@ function updateSongLengthUI() {
   const cap = Settings.capability(), supported = Boolean(cap.duration_analysis);
   $("duration-hint").closest(".field").hidden = !supported;
   if (supported) {
-    $("duration-hint").textContent = "Lux analyzes your lyrics, style and tempo when you click Create, then chooses a song length and prepares the arrangement before generating audio. Planning takes extra model processing time. The final performance may be shorter or vary from the plan. If the model cannot fit a complete arrangement, Lux explains what to shorten.";
+    const hook = window.Hook?.options().hook_melody;
+    $("duration-hint").textContent = hook?.mode === "arrange" ? "Hook follows the recorded melody and its approximate length, rounded to musical bars with a short ending. A new instrumental performance is generated." : hook ? "Lux plans an instrumental song from your style, then fits your Hook melody into the chorus or an interior lead phrase. Tempo and rhythm adapt to the song. Planning adds processing time." : "Lux analyzes your lyrics, style and tempo when you click Create, then chooses a song length and prepares the arrangement before generating audio. Planning takes extra model processing time. The final performance may be shorter or vary from the plan. If the model cannot fit a complete arrangement, Lux explains what to shorten.";
   }
 }
 function styleTags() { return $("style").value.split(",").map((t) => t.trim()).filter(Boolean); }
@@ -408,9 +409,10 @@ async function submit(e) {
   $("go").disabled = true;
   try {
     const vibeReference = await window.Vibe?.generationReference() || {};
+    const hookReference = await window.Hook?.generationReference() || {};
     const seed = random ? Math.floor(Math.random() * 2 ** 31) : seed0;
     const r = await fetch("/api/generate", { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...base, ...vibeReference, seed, variations: state.variations }) });
+      body: JSON.stringify({ ...base, ...hookReference, ...vibeReference, seed, variations: state.variations }) });
     if (!r.ok) {
       const d = (await r.json()).detail;
       $("form-error").textContent = Array.isArray(d) ? d.map((x) => `${x.loc.slice(1).join(".") || "request"}: ${x.msg}`).join("\n") : String(d);
@@ -423,6 +425,7 @@ async function submit(e) {
 function loadIntoForm(p) {
   window.Vibe?.clearCreateReference();
   p = { ...p, ...(p.model_options || {}) };
+  window.Hook?.restoreReference(p);
   $("title").value = p.title || "";
   $("instrumental").checked = Boolean(p.instrumental);
   if (!p.instrumental) $("lyrics").value = p.lyrics || "";
@@ -454,11 +457,23 @@ function render() {
   const rank = { running: 0, queued: 1, error: 2 };
   const active = state.jobs.filter((j) => !["done", "cancelled"].includes(j.status) && (j.kind || "generate") === "generate")
     .sort((a, b) => rank[a.status] - rank[b.status] || a.created - b.created);
-  const songs = state.library.filter((s) => !q || [s.title, s.params.style, s.params.lyrics].join(" ").toLowerCase().includes(q));
+  const songs = state.library.filter((s) => {
+    const hasVibe = Boolean(s.vibe), hasHook = Boolean(s.params.hook_melody);
+    const sourceMatches = state.libraryFilter === "all" ||
+      state.libraryFilter === "create" && !hasVibe && !hasHook ||
+      state.libraryFilter === "vibe" && hasVibe ||
+      state.libraryFilter === "hook" && hasHook;
+    return sourceMatches && (!q || [s.title, s.params.style, s.params.lyrics].join(" ").toLowerCase().includes(q));
+  });
+  for (const button of document.querySelectorAll("[data-library-filter]")) {
+    const selected = button.dataset.libraryFilter === state.libraryFilter;
+    button.classList.toggle("on", selected);
+    button.setAttribute("aria-pressed", String(selected));
+  }
   $("lib-count").textContent = state.library.length;
 
   if (!active.length && !songs.length) {
-    $("list").innerHTML = q ? `<div class="empty"><h3>No matches</h3>Try another search.</div>` :
+    $("list").innerHTML = q || state.libraryFilter !== "all" || state.library.length ? `<div class="empty"><h3>No matching songs</h3>Try another search or source filter.</div>` :
       `<div class="empty"><div class="big"><svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>
        <h3>Your first song is one click away</h3>Write some lyrics, pick a style, hit Create.</div>`;
     return;
@@ -485,7 +500,7 @@ function render() {
   const songRows = songs.map((s) => `
     <div class="song ${state.current?.name === s.name ? "playing" : ""}" data-name="${esc(s.name)}">
       <div class="cover"><img src="${songCover(s, 128)}" alt=""><div class="ov"><svg viewBox="0 0 24 24">${state.current?.name === s.name && !audio.paused ? ICON.pause : ICON.play}</svg></div><span class="dur">${fmt(s.duration_s)}</span></div>
-      <div class="s-main"><div class="s-title">${esc(s.title)}${s.vibe ? `<span class="badge">Vibe · ${vibeImageCount(s) > 1 ? `${vibeImageCount(s)} images` : "Image inspired"}</span>` : ""}${cotBadge(s.params.cot)}${endingBadge(s)}${s.edit ? `<span class="badge">edit ${fmt(s.edit.start_s)}–${fmt(s.edit.end_s)}</span>` : ""}</div>
+      <div class="s-main"><div class="s-title">${esc(s.title)}${s.params.hook_melody ? '<span class="badge badge-hook">Hook · Recorded melody</span>' : ''}${s.vibe ? `<span class="badge badge-vibe">Vibe · ${vibeImageCount(s) > 1 ? `${vibeImageCount(s)} images` : "Image inspired"}</span>` : ""}${cotBadge(s.params.cot)}${endingBadge(s)}${s.edit ? `<span class="badge">edit ${fmt(s.edit.start_s)}–${fmt(s.edit.end_s)}</span>` : ""}</div>
         <div class="s-tags">${tagsHtml(s.params.style)}</div>
         <div class="s-sub">seed ${s.params.seed} · made in ${fmt(s.elapsed_s)} · ${esc((s.created || "").replace("T", " ").slice(0, 16))}</div></div>
       <canvas class="mini-wave"></canvas>
@@ -525,6 +540,9 @@ $("list").onclick = async (e) => {
   togglePlay(s);
 };
 $("search").oninput = render;
+for (const button of document.querySelectorAll("[data-library-filter]")) {
+  button.addEventListener("click", () => { state.libraryFilter = button.dataset.libraryFilter; render(); });
+}
 
 
 /* ---------- jobs polling ---------- */
@@ -744,6 +762,7 @@ async function openDrawer(s) {
     <div class="d-body">
       <div><h2 class="d-title">${esc(s.title)}</h2><div class="d-style">${esc(p.style)}</div></div>
       ${s.generation?.message ? `<p class="hint">${esc(s.generation.message)}</p>` : endingBadge(s)}
+      ${s.params.hook_melody ? `<div class="d-sec"><h4>Hook audio reference</h4><div class="kv"><div><span>How Lux used it</span><b>${s.params.hook_melody.mode === 'arrange' ? 'Arrange this recording' : 'Develop into a song'}</b></div><div><span>Use the melody as</span><b>${s.params.hook_melody.target === 'vocal' ? 'Vocal melody' : 'Instrumental hook'}</b></div><div><span>Detected melody</span><b>${s.params.hook_melody.notes.length} notes · ${s.params.hook_melody.bpm} BPM</b></div></div>${s.artifacts?.hook_reference_audio ? `<audio class="hook-reference-player" controls preload="none" src="/outputs/${encodeURIComponent(s.artifacts.hook_reference_audio)}" aria-label="Original Hook audio reference"></audio>` : '<p class="hint">The original audio reference is not available for this song.</p>'}</div>` : ''}
       ${s.vibe ? `<div class="d-sec"><h4>Image inspiration · Lux Vibe</h4><p class="hint">${vibeImageCount(s) > 1 ? `${vibeImageCount(s)} images inspired this song’s musical direction. They are saved locally with its composite cover and listening gallery.` : "This song’s musical direction was inspired by an image. The image is saved locally as its cover."}</p><button class="btn" data-act="dimage">${vibeImageCount(s) > 1 ? "View inspiration gallery" : "View inspiration image"}</button></div>` : ""}
       <div class="d-actions">
         <button class="btn primary" data-act="dplay"><svg viewBox="0 0 24 24">${ICON.play}</svg>Play</button>

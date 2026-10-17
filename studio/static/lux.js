@@ -36,6 +36,7 @@ const Lux = (() => {
     beats: null,        // {bpm, offset_s, beat_s, beats_per_bar} of the current song
     snap: true,         // snap edit selections to the beat grid
     variation: "new",   // "new" = write the selection anew, "same" = same notes, new performance
+    direction: "",
     listen: "solo",     // Play selection: "solo" = only the armed stem, "mix" = full mix
     audition: null,     // while auditioning solo, index of the only audible track
   };
@@ -47,15 +48,16 @@ const Lux = (() => {
     document.body.classList.toggle("lux-mode", on);
     document.getElementById("nav-create").classList.toggle("active", !on);
     document.getElementById("nav-lux").classList.toggle("active", on);
-    if (location.hash === "#/settings" || location.hash === "#/vibe") document.getElementById("nav-create").classList.remove("active");
+    if (["#/settings", "#/vibe", "#/hook"].includes(location.hash)) document.getElementById("nav-create").classList.remove("active");
     if (location.hash === "#/vibe") document.getElementById("nav-lux").classList.remove("active");
     if (!on) pause();
   }
   async function open(name) {
+    if (L.song?.name !== name) L.direction = "";
     if (location.hash !== `#/lux/${name}`) {
       history.pushState(null, "", `#/lux/${encodeURIComponent(name)}`);
       // pushState does not emit hashchange; retire the other views explicitly.
-      Settings.route(); window.Vibe?.route();
+      Settings.route(); window.Vibe?.route(); window.Hook?.route();
     }
     await route();
   }
@@ -193,7 +195,7 @@ const Lux = (() => {
         </div>
         <div class="lx-editbar" id="lx-editbar"></div>
         <div class="lx-tracks" id="lx-tracks">${set.stems.map((st, i) => trackRow(st, i, set)).join("")}</div>
-        <div class="lx-foot"><b class="lx-tip">Tip:</b> press <b>Edit</b> on a track, then drag across its lane to regenerate that part of the stem only. Separated in ${fmt(set.elapsed_s)} with ${esc(MODE_INFO[set.mode].model)}${L.loadingSet ? " · loading audio…" : ""}</div>
+        <div class="lx-foot">${set.edit?.direction ? `<b>Direction used:</b> ${esc(set.edit.direction)} · ` : ""}<b class="lx-tip">Tip:</b> press <b>Edit</b> on a track, then drag across its lane to regenerate that part of the stem only. Separated in ${fmt(set.elapsed_s)} with ${esc(MODE_INFO[set.mode].model)}${L.loadingSet ? " · loading audio…" : ""}</div>
       </div>`;
     syncTrackUI(); drawLanes(); updateTransport(); renderEditBar();
   }
@@ -237,6 +239,9 @@ const Lux = (() => {
           <button class="create-btn lx-eb-go" data-lx="eb-go"><svg viewBox="0 0 24 24"><path d="M12 3l1.9 5.8L20 10l-5 3.9L16.5 20 12 16.6 7.5 20 9 13.9 4 10l6.1-1.2z"/></svg>Regenerate</button>
           <button class="icon-btn" data-lx="eb-clear" title="Clear selection"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
         </div>
+        <label class="lx-eb-direction">Direction for this part <span>Optional · guides the selected section</span>
+          <textarea data-lx="eb-direction" maxlength="500" rows="2" placeholder="e.g. Make the chorus more powerful, with a brighter melody and stronger drums">${esc(L.direction || "")}</textarea>
+        </label>
       </div>` : ""}
       ${running.map((j) => `<div class="ed-job" data-sjob="${j.id}"><span class="spinner-ring"></span>
         <div><b class="${j.status === "running" ? "shimmer" : ""}">${j.status === "running" ? "Regenerating" : "Queued"} ${esc(j.params.stem)} ${fmt(j.params.start_s)}–${fmt(j.params.end_s)}</b>
@@ -269,7 +274,8 @@ const Lux = (() => {
     const { i, a, b } = L.laneSel, st = L.set.stems[i];
     for (let k = 0; k < L.stemTakes; k++) {
       const body = { song: L.song.name, set_id: L.set.id, stem: st.id, start_s: +a.toFixed(2), end_s: +b.toFixed(2),
-                     seed: Math.floor(Math.random() * 2 ** 31), variation: L.variation };
+                     seed: Math.floor(Math.random() * 2 ** 31), variation: L.variation,
+                     direction: (document.querySelector('[data-lx="eb-direction"]')?.value || "").trim() || null };
       const r = await fetch("/api/edit/replace-stem", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       if (!r.ok) { const d = (await r.json()).detail; alert(typeof d === "string" ? d : JSON.stringify(d)); return; }
       const job = await r.json();
@@ -573,7 +579,9 @@ const Lux = (() => {
     if (a === "eb-clear") { L.laneSel = null; L.armed = null; if (L.audition != null) pause(); syncTrackUI(); renderEditBar(); }
   });
   document.addEventListener("input", (e) => {
-    const t = e.target; if (t.dataset?.lx !== "vol") return;
+    const t = e.target;
+    if (t.dataset?.lx === "eb-direction") { L.direction = t.value; return; }
+    if (t.dataset?.lx !== "vol") return;
     L.tracks[Number(t.dataset.i)].gain = Number(t.value); paintRange(t); applyGains();
   });
   let laneDrag = null;

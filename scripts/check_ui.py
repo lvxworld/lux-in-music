@@ -79,10 +79,190 @@ def check_reactive_effects(page, expect, artifacts):
     page.wait_for_function("parseFloat(getComputedStyle($('vibe-effects')).opacity) > .4")
 
 
+def check_hook(browser, url, artifacts, expect):
+    """Real upload/PCM recording and routing, with fake model responses."""
+    context = browser.new_context(permissions=["microphone"], viewport={"width": 1440, "height": 1000})
+    context.add_init_script("""window.__hookInputs = [{kind:'audioinput',deviceId:'built-in',label:'Synthetic built-in microphone'},
+        {kind:'audioinput',deviceId:'usb-interface',label:'Synthetic USB guitar interface'}];
+        navigator.mediaDevices.enumerateDevices = async () => window.__hookInputs;
+        const realGetUserMedia = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+        navigator.mediaDevices.getUserMedia = async constraints => {
+            window.__hookInputConstraint = constraints.audio?.deviceId?.exact || '';
+            const audio = typeof constraints.audio === 'object' ? {...constraints.audio} : true;
+            if (typeof audio === 'object') delete audio.deviceId;
+            return realGetUserMedia({...constraints,audio});
+        };""")
+    page = context.new_page(); errors = []; page.on("pageerror", lambda error: errors.append(str(error)))
+    page.route("https://**/*", lambda route: route.abort())
+    installed = False
+    def status(route):
+        data = route.fetch().json()
+        data.update(installed=installed, files_verified=installed, runtime_ready=installed, license_accepted=installed, job=None)
+        route.fulfill(json=data)
+    page.route("**/api/hook/status", status)
+    def install(route):
+        nonlocal installed
+        assert route.request.post_data_json["accept_license"]
+        installed = True
+        route.fulfill(json={"status": "done"})
+    page.route("**/api/hook/install", install)
+    def capabilities(route):
+        data = route.fetch().json()
+        if data["active"]:
+            data["active"]["capabilities"].update(hook=True, abc=True, planning=["off", "melody", "full"], duration_analysis=True)
+        route.fulfill(json=data)
+    page.route("**/api/settings/status", capabilities)
+    reference = {"version": 1, "bpm": 120, "source": "solo", "octave_shift": 0, "beats": 8,
+        "notes": [{"pitch": 60 + i % 3 * 2, "start": i, "end": i + .8} for i in range(8)], "mode": "develop", "target": "vocal"}
+    analyses = []
+    def analyze(route):
+        analyses.append(route.request)
+        assert route.request.post_data_buffer[:4] == b"RIFF"
+        route.fulfill(json={"melody": reference, "bpm": 120, "tempo_estimated": False, "duration_s": 4,
+                            "warnings": ["The detector may be switching between instruments. Listen to the preview."]})
+    page.route("**/api/hook/analyze?*", analyze)
+    generated = []
+    def generate(route):
+        generated.append(route.request.post_data_json)
+        route.fulfill(json={"id": "hook-test", "status": "queued"})
+    page.route("**/api/generate", generate)
+    page.goto(url + "/#/hook")
+    expect(page.locator("#hook")).to_be_visible()
+    expect(page.locator(".create")).to_be_hidden(); expect(page.locator(".workspace")).to_be_hidden()
+    expect(page.locator("#nav-hook")).to_have_class("active")
+    assert page.locator(".sidebar nav a").evaluate_all("links => links.map(a => a.id)") == ["nav-create", "nav-vibe", "nav-hook", "nav-lux", "nav-settings"]
+    expect(page.locator("#nav-hook svg rect")).to_have_count(1)
+    expect(page.locator("#hook")).to_contain_text("Prepare Hook in Settings")
+    page.locator("#nav-settings").click()
+    expect(page.locator("#hook-install")).to_be_disabled()
+    page.locator("#hook-license").check(); page.locator("#hook-install").click()
+    expect(page.locator("#hook-install")).to_have_text("Installed · Verified")
+    page.reload(); expect(page.locator("#hook-license")).to_be_checked()
+    if not page.evaluate("Settings.ready()"):
+        page.locator("#license-test-model").check(); page.locator("#setup-test-model").click()
+        expect(page.locator("#setup-test-model")).to_have_text("Active · Verified", timeout=15000)
+    page.locator("#nav-hook").click()
+    page.locator(".hook-input-settings summary").click()
+    page.locator("#hook-input").select_option("usb-interface")
+    assert page.evaluate("localStorage.getItem('lux.hook.audioInput')") == "usb-interface"
+    page.reload()
+    page.locator(".hook-input-settings summary").click()
+    expect(page.locator("#hook-input")).to_have_value("usb-interface")
+    page.locator("#nav-create").click()
+    page.locator("#title").fill("Synthetic Hook song")
+    page.locator("#lyrics").fill("[Chorus]\nA simple light across the sky")
+    page.locator("#style").fill("Synthetic piano, 120 BPM")
+    before = page.evaluate("({title:$('title').value, lyrics:$('lyrics').value, style:$('style').value, seed:$('seed').value, adv:{...state.adv}})")
+    page.locator("#nav-hook").click()
+    expect(page.locator(".hook-demo")).to_contain_text("Played and recorded by Luke. Not AI-generated.")
+    page.locator("#hook-demo").click()
+    page.wait_for_function("""() => Number.isFinite(document.querySelector("#hook-audio")?.duration)
+        && Math.abs(document.querySelector("#hook-audio").duration - 71.652) < 0.2""")
+    expect(page.locator("#hook-demo")).to_have_text("Replace with Luke's demo")
+    page.locator("#hook-file").set_input_files({"name": "synthetic.wav", "mimeType": "audio/wav", "buffer": reactive_wav()})
+    expect(page.locator("#hook-analyze")).to_be_enabled()
+    page.locator("#hook-start").fill("1"); page.locator("#hook-start").press("Tab")
+    page.locator("#hook-end").fill("5"); page.locator("#hook-end").press("Tab")
+    page.locator("#hook-bpm").fill("120"); page.locator("#hook-bpm").press("Tab")
+    page.locator("#hook-analyze").click()
+    expect(page.locator("#hook-use")).to_be_enabled()
+    expect(page.locator("#hook")).to_contain_text("SheetSage2 analyzed the recording locally.")
+    expect(page.locator("#hook")).to_contain_text("Your style comes from Create")
+    expect(page.locator("#hook-melody-audio")).to_have_attribute("src", re.compile("blob:"))
+    assert len(analyses) == 1 and not generated
+    page.screenshot(path=str(artifacts / "hook-desktop.png"))
+    page.locator("#hook-use").click()
+    expect(page.locator(".create")).to_be_visible(); expect(page.locator("#create-hook-reference")).to_be_visible()
+    assert page.evaluate("({title:$('title').value, lyrics:$('lyrics').value, style:$('style').value, seed:$('seed').value, adv:{...state.adv}})") == before
+    expect(page.locator("#cot [data-v='melody']")).to_have_class("on")
+    assert not generated
+    page.locator("#go").click()
+    page.wait_for_function("state.submitting === false")
+    assert generated[-1]["model_options"]["hook_melody"]["notes"] == reference["notes"]
+    page.evaluate("""() => {
+        const make = (name, extra = {}) => {
+            const {params = {}, ...rest} = extra;
+            return {
+            name, title: name, params: {style: "Synthetic style", lyrics: "", seed: 1, ...params},
+            duration_s: 10, elapsed_s: 1, created: "2026-01-01T00:00:00", sample_rate: 44100,
+            channels: 2, peaks: [], ...rest
+        }; };
+        window.__libraryFilterFixtures = [
+            make("filter-create"),
+            make("filter-vibe", {vibe: {image_count: 1}}),
+            make("filter-hook", {params: {hook_melody: {mode: "develop", target: "instrumental", notes: [], bpm: 120}}}),
+            make("filter-vibe-hook", {vibe: {image_count: 2}, params: {hook_melody: {mode: "arrange", target: "vocal", notes: [], bpm: 120}}})
+        ];
+        state.library.push(...window.__libraryFilterFixtures);
+        render();
+    }""")
+    expect(page.locator("[data-library-filter='all']")).to_have_attribute("aria-pressed", "true")
+    colors = page.evaluate("""() => [
+        getComputedStyle(document.querySelector(".badge-vibe")).color,
+        getComputedStyle(document.querySelector(".badge-hook")).color,
+        getComputedStyle(document.querySelector("#nav-vibe")).color,
+        getComputedStyle(document.querySelector("#nav-hook")).color
+    ]""")
+    assert colors[0] != colors[1] and colors[0] == colors[2] and colors[1] == colors[3], colors
+    page.locator("[data-library-filter='create']").click()
+    expect(page.locator(".song[data-name='filter-create']")).to_have_count(1)
+    expect(page.locator(".song[data-name='filter-vibe']")).to_have_count(0)
+    expect(page.locator(".song[data-name='filter-hook']")).to_have_count(0)
+    page.locator("[data-library-filter='vibe']").click()
+    expect(page.locator(".song[data-name='filter-vibe']")).to_have_count(1)
+    expect(page.locator(".song[data-name='filter-vibe-hook']")).to_have_count(1)
+    expect(page.locator(".song[data-name='filter-hook']")).to_have_count(0)
+    page.locator("[data-library-filter='hook']").click()
+    expect(page.locator(".song[data-name='filter-hook']")).to_have_count(1)
+    expect(page.locator(".song[data-name='filter-vibe-hook']")).to_have_count(1)
+    expect(page.locator(".song[data-name='filter-vibe']")).to_have_count(0)
+    page.locator("[data-library-filter='all']").click()
+    page.evaluate("""() => { state.library = state.library.filter(s => !s.name.startsWith("filter-")); render(); }""")
+    page.locator("#hook-remove-reference").click()
+    assert "hook_melody" not in page.evaluate("Settings.options()")
+    page.go_back(); expect(page.locator("#hook")).to_be_visible()
+    page.go_forward(); expect(page.locator(".create")).to_be_visible()
+    page.locator("#nav-hook").click()
+    page.evaluate("Lux.open('legacy-song')")
+    expect(page.locator("#hook")).to_be_hidden(); expect(page.locator("#lux")).to_be_visible()
+    page.locator("#nav-hook").click()
+    page.add_init_script("window.__hookTracks = []")
+    page.evaluate("""() => { window.__hookTracks = []; const original = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+        navigator.mediaDevices.getUserMedia = async (...args) => { const stream = await original(...args); window.__hookTracks.push(...stream.getTracks()); return stream; }; }""")
+    page.locator("#hook-record").click()
+    page.wait_for_function("window.__hookTracks.length > 0")
+    assert page.evaluate("window.__hookInputConstraint") == "usb-interface"
+    page.wait_for_timeout(2600)
+    page.locator("#hook-record").click()
+    expect(page.locator("#hook-record")).to_have_attribute("aria-pressed", "false")
+    expect(page.locator("#hook-analyze")).to_be_enabled()
+    page.wait_for_function("window.__hookTracks.every(t => t.readyState === 'ended')")
+    page.evaluate("window.__hookInputs = window.__hookInputs.filter(d => d.deviceId !== 'usb-interface'); navigator.mediaDevices.dispatchEvent(new Event('devicechange'))")
+    page.locator(".hook-input-settings summary").click()
+    expect(page.locator("#hook-input-message")).to_contain_text("unavailable")
+    expect(page.locator("#hook-record")).to_be_disabled()
+    page.locator("#hook-input").select_option("")
+    expect(page.locator("#hook-record")).to_be_enabled()
+    page.locator("#hook-record").click(); page.wait_for_function("window.__hookTracks.length === 2")
+    page.locator("#nav-settings").click()
+    page.wait_for_function("window.__hookTracks.every(t => t.readyState === 'ended')")
+    page.locator("#nav-hook").click()
+    page.evaluate("() => { navigator.mediaDevices.getUserMedia = async () => {throw new DOMException('Denied', 'NotAllowedError')}; }")
+    page.locator("#hook-record").click()
+    expect(page.locator("#hook-error")).to_contain_text("Microphone access was denied")
+    page.set_viewport_size({"width": 390, "height": 844})
+    expect(page.locator(".mobile-nav a[href='#/hook']")).to_be_visible()
+    page.screenshot(path=str(artifacts / "hook-mobile.png"))
+    assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
+    assert not errors, errors
+    context.close()
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--artifacts", type=Path, default=ROOT / "outputs/checks/ui")
     parser.add_argument("--readme-screenshots", action="store_true", help="Capture synthetic example screens for the README")
+    parser.add_argument("--hook-only", action="store_true", help="Run only the Hook browser flow with synthetic audio")
     args = parser.parse_args(); args.artifacts.mkdir(parents=True, exist_ok=True)
     from playwright.sync_api import sync_playwright, expect
     chrome = os.environ.get("LUX_TEST_BROWSER") or shutil.which("google-chrome") or "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
@@ -104,7 +284,12 @@ def main():
                         time.sleep(0.1)
                 else: raise RuntimeError("Fixture server did not start")
                 with sync_playwright() as playwright:
-                    browser = playwright.chromium.launch(executable_path=chrome, headless=True)
+                    browser = playwright.chromium.launch(executable_path=chrome, headless=True, args=["--use-fake-device-for-media-stream"])
+                    if args.hook_only:
+                        check_hook(browser, url, args.artifacts, expect)
+                        browser.close()
+                        print(json.dumps({"hook_browser_flow": "passed"}))
+                        return
                     page = browser.new_page(viewport={"width": 1440, "height": 1000})
                     page.add_init_script("""window.__luxMediaSourceCount = 0;
                         const original = AudioContext.prototype.createMediaElementSource;
@@ -494,11 +679,13 @@ def main():
                     expect(fallback_page.locator("#vibe-effects-message")).to_contain_text("Playback continues")
                     assert fallback_page.evaluate("!audio.paused")
                     fallback.close()
+                    check_hook(browser, url, args.artifacts, expect)
                     if args.readme_screenshots:
                         from readme_screenshots import capture
                         capture(browser, url, ROOT / "docs/images")
                     browser.close()
-                print(json.dumps({"vibe_effects_unavailable_preserves_playback": True,
+                print(json.dumps({"hook_upload_recording_navigation_and_transfer": True,
+                                  "vibe_effects_unavailable_preserves_playback": True,
                                   "vibe_effects_follow_live_audio_and_silence": True, "vibe_effects_pause_and_visibility": True,
                                   "vibe_effects_toggle_persists_without_stopping_audio": True, "vibe_effects_single_media_source": True,
                                   "vibe_five_image_validation_and_order": True, "vibe_advanced_opt_out_and_transfer": True,

@@ -1,5 +1,84 @@
 # Project handoff
 
+## Studio Mode edit direction
+
+- Added an optional “Direction for this part” field to the selected-section
+  Regenerate controls. It is passed independently of lyrics, limited to 500
+  characters, and saved in the generated stem take's metadata for later review.
+- YuE2 receives the direction as an addition to its style prompt while sampling
+  the selected semantic section. The existing time-range splice and chosen-stem
+  replacement stay in place. YuE2 has no native section-only instruction field,
+  so the direction guides the result but cannot guarantee exact compliance.
+- Verification: `python3 scripts/check.py` and `.venv/bin/python
+  scripts/check.py --full` pass; the latter runs 176 offline tests including
+  mocked YuE2 conditioning and API length validation. The browser flow could
+  not start because Playwright was not installed in the environment and the
+  restricted network could not reach PyPI. Real YuE2 behavior still needs the
+  user's Studio Mode listening test.
+
+## SheetSage2 replaces the Hook pitch detector
+
+Branch: `feat/lux-hook`, local only. The user approved the melody-only YuE2 arrangement and asked to use SheetSage2 as the only Hook model.
+
+- Hook now uses SheetSage2 as its only transcription model. The UI supports the full recording path and offers Develop or Arrange; Arrange carries the official melody-only ABC score into YuE2.
+- Settings presents SheetSage2 and MERT source, pinned revisions and CC BY-NC 4.0 terms. Download and runtime preparation remain explicit. Files are hash-verified and saved under ignored model/runtime folders; subsequent analysis is offline.
+- Analysis runs in an isolated short-lived Python process using FP32, Metal when available and CPU fallback. Temporary recording and derived files are removed after each request. The model is not loaded at Lux startup and does not alter the active music profile.
+- The prior local listening trial completed on Apple Metal. Melody-only conditioning produced a complete 71.84-second instrumental YuE2 result under an explicit 90-second target; the user accepted that result as musically strong. This is one listening result, not a general quality guarantee.
+- The browser fixture now supplies synthetic SheetSage2 output. Verification has not been run after this integration change, and automated tests for the production manager remain to be added. Do not push yet.
+
+## Hook instrumental reference: finishing limit and transcription review
+
+- A real 71.65-second stereo reference was analyzed in Arrange recording mode.
+  The saved score lasted 73.04 seconds at the estimated 138 BPM. Both original
+  semantic attempts hit the 90-second hard limit with no EOS. The message about
+  shortening verses or choosing a longer duration was inappropriate for this
+  instrumental, automatically timed workflow.
+- Controlled local inference kept the original request and changed only its
+  token budget: the same seed emitted EOS at 91.96 seconds. A separate variant
+  with conventional ABC spelling and an instrumental description also emitted
+  EOS, but the budget-only trial isolates the finishing-limit cause.
+- Arrange recording now gets a bounded finishing allowance: target plus the
+  larger of 30 seconds or 25%, within the existing 360-second ceiling. Only the
+  late-ending tolerance changes; early/dropped-section checks remain strict.
+  No truncated stream is rendered. Normal plans and Develop mode are unchanged.
+  Failure advice is specific to recording phrases and detected tempo, and the
+  result records/displays the reference-to-performance timing difference.
+- A full real generation through the shared engine and existing native endpoint
+  completed with Q8_0/F16 at 92.16 seconds and observed EOS. The WAV and report are
+  under ignored `outputs/checks/hook-ending-review/`. This verifies the ending
+  path, not musical fidelity; the user's listening acceptance is still pending.
+- Additional local feasibility checks used the already installed EmbeddingGemma
+  audio encoder, with vision disabled and local-only loading. Three eight-second
+  segments ranked an instrumental acoustic-guitar description highest among
+  candidate descriptions. This is semantic association, not verified instrument
+  identification. No captioning model or remote inference was used.
+- A separate local HTDemucs 6-stem pass on a 20-second excerpt produced
+  substantial bass, guitar and drum stems and very low vocal/piano energy.
+  This supports reviewing an instrumental/polyphonic path; separator labels
+  and stem levels are not instrument-identification confidence or a listening
+  acceptance. Diagnostic audio remains under ignored outputs.
+- Spotify Basic Pitch's public Apache-2.0 previous runtime model (230 KB, revision
+  `fa5997af0a8210982619003269994a1be25eddf3`) and reference decoder were evaluated
+  in a temporary directory. It found overlapping note events throughout most of
+  the recording. A local synthesized polyphonic preview was saved for review.
+  This confirms a polyphonic transcription route can run locally, not that a
+  correct melody/chord decomposition has been accepted. Basic Pitch and audio
+  instrument/style analysis are not integrated into Hook or its Settings yet.
+- Offline regressions cover the extra release margin, unchanged native timing,
+  refusal to render capped or overly early reference results, and the advisory
+  transcription warning. Full offline checks passed with 186 tests; the focused
+  Hook Chrome flow also passed after the advisory changes. Next: listen to the full instrumental trial and the
+  note preview, then decide how to expose polyphonic instrument references.
+
+## LUX HOOK local implementation
+
+Branch: `feat/lux-hook`, local changes only. The page records or uploads one local audio file, supports device selection and range trimming, previews the selected melody, and transfers the reviewed reference into Create while preserving other form fields. SheetSage2 is now the only Hook transcription model; the prior pitch-model implementation and local weights have been removed.
+
+- Setup and licenses are managed in the Hook Settings card, independently of music generation profiles.
+- Develop mode fits melody notes into the planned arrangement. Arrange mode transfers SheetSage2's melody-only score with approximate recording timing. The YuE2 adapter retains its normal duration and ending checks.
+- A local real-model test on Apple Metal and two YuE2 trials were completed before integration. The user accepted the melody-only arrangement. Automated and browser checks have not been run after the current model replacement.
+- Next: review the fake inference fixture and run the baseline, full offline suite, browser flow, then listen to an arrangement from the Hook page. Keep the branch local until verification and listening acceptance are complete.
+
 ## Stronger glow in the Vibe listening effects
 
 Branch: `feat/lux-vibe-v0-1`.
@@ -946,3 +1025,35 @@ local error/retry handling, hidden maintenance actions and visible creator terms
 Desktop/mobile screenshots were captured; the desktop result was inspected.
 The current temporary archive is updated after source comparisons. A restart
 loads the changed catalog/backend; a browser reload loads the new UI scripts.
+
+## Hook song references and instrumental output
+
+Songs created with a Hook audio reference now retain the analyzed audio excerpt
+as a local song artifact. Song details show the selected Hook mode, melody role,
+detected note/tempo summary and a player for the saved excerpt. While a Hook audio
+reference is active, Create hides lyrics, locks the Instrumental control on, and
+the API enforces instrumental output independently of the browser.
+
+JavaScript syntax checks, Python compilation and the whitespace diff check passed.
+The automated test suite was not run for this change.
+
+## Library source filters
+
+Library rows distinguish Vibe and Hook with separate, restrained color accents.
+All, Create, Vibe and Hook filters combine with the existing text search. Songs
+with both references appear under both source filters; Create includes songs
+without either reference. The browser flow covers all four cases and verifies
+that the two source badges use different colors. The portable baseline passed
+(15 tests). The browser flow could not start because Playwright is not installed
+and the environment could not reach PyPI to install it.
+
+## Bundled Hook demo performance
+
+Hook includes a sample recording supplied by Luke, identified in the UI as
+performed and recorded by him and not AI-generated. The user can load it through
+the same local file-validation and analysis flow as any other recording. The
+original 71.65-second WAV is included as a static app asset and in the built wheel.
+
+The left navigation now uses the same Vibe lavender and Hook aqua as the
+corresponding Library badges, including their selected and hover states. Browser
+coverage checks that navigation and badge colors stay in sync.

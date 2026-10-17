@@ -10,10 +10,11 @@
 <link rel="stylesheet" href="/static/lux.css">
 <link rel="stylesheet" href="/static/theme-lux.css">
 <link rel="stylesheet" href="/static/settings.css">
+<link rel="stylesheet" href="/static/hook.css">
 </head>
 <body>
 <div class="glow g1"></div><div class="glow g2"></div><div class="glow g3"></div>
-<nav class="mobile-nav" aria-label="Studio navigation"><a href="#/">Create</a><a href="#/vibe">Vibe <span class="new-badge">NEW</span></a><a href="#/lux">Studio Mode</a><a href="#/settings">Settings</a></nav>
+<nav class="mobile-nav" aria-label="Studio navigation"><a href="#/">Create</a><a href="#/vibe">Vibe <span class="new-badge">NEW</span></a><a href="#/hook">Hook</a><a href="#/lux">Studio Mode</a><a href="#/settings">Settings</a></nav>
 
 <div class="app">
   <!-- Sidebar -->
@@ -25,6 +26,7 @@
     <nav>
       <a class="active" href="#/" id="nav-create"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Create <span class="count" id="lib-count">0</span></a>
       <a href="#/vibe" id="nav-vibe"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>Vibe <span class="new-badge">NEW</span></a>
+      <a href="#/hook" id="nav-hook"><svg viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0014 0v-2M12 19v3M8 22h8"/></svg>Hook</a>
       <a href="#/lux" id="nav-lux"><svg viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/><path d="M3 17.5l9 5 9-5" opacity=".5"/></svg>Studio Mode</a>
       <a href="#/settings" id="nav-settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.5 5.5l2 2M16.5 16.5l2 2M5.5 18.5l2-2M16.5 7.5l2-2"/></svg>Settings</a>
     </nav>
@@ -41,14 +43,17 @@
     <p id="settings-message" role="status" aria-live="polite">Checking model setup…</p>
     <div class="model-cards">
       <div id="vibe-settings" class="model-card-group"></div>
+      <div id="hook-settings" class="model-card-group"></div>
       <div id="model-cards" class="model-card-group"></div>
     </div>
   </section>
   <section class="vibe" id="vibe" aria-labelledby="vibe-title"></section>
+  <section class="hook" id="hook" aria-labelledby="hook-title"></section>
   <section class="create">
     <form id="form" autocomplete="off">
       <div class="demo-row" id="demo-row"></div>
       <div class="create-vibe-reference" id="create-vibe-reference" hidden></div>
+      <div class="hook-reference" id="create-hook-reference" hidden></div>
       <details class="genre-templates" id="genre-templates">
         <summary>Genre templates <span class="meta">5 presets</span></summary>
         <p class="hint">Uses the Melodic Techno demo lyrics with your chosen style. Keeps your title and settings.</p>
@@ -137,6 +142,12 @@ The last light fades, the night grows calm</textarea>
   <section class="workspace">
     <div class="ws-head">
       <h1>Library</h1>
+      <div class="library-filters" role="group" aria-label="Filter songs by source">
+        <button type="button" class="on" data-library-filter="all" aria-pressed="true">All</button>
+        <button type="button" data-library-filter="create" aria-pressed="false">Create</button>
+        <button type="button" data-library-filter="vibe" aria-pressed="false">Vibe</button>
+        <button type="button" data-library-filter="hook" aria-pressed="false">Hook</button>
+      </div>
       <div class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
         <input id="search" placeholder="Search title, style, lyrics"></div>
     </div>
@@ -195,5 +206,6 @@ The last light fades, the night grows calm</textarea>
 <script src="/static/vibe-effects.js"></script>
 <script src="/static/lux.js"></script>
 <script src="/static/vibe.js"></script>
+<script src="/static/hook.js"></script>
 </body>
 </html>

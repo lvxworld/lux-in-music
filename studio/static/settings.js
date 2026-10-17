@@ -46,7 +46,7 @@ const Settings = (() => {
     for (const [key, value] of Object.entries(state.adv)) if (cap.options?.includes(key)) result[key] = value;
     if (cap.planning?.length) result.cot = state.cot;
     if (cap.abc && $("abc").value.trim()) result.abc = $("abc").value;
-    return result;
+    return { ...result, ...window.Hook?.options() };
   }
 
   function route() {

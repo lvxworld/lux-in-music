@@ -52,6 +52,12 @@ body::after {
 .brand-sub { font-style: italic; color: var(--lux-soft); letter-spacing: .02em; }
 .license { font-style: italic; }
 nav a.active { background: rgba(240,162,60,.08); box-shadow: inset 2px 0 0 var(--lux); color: var(--text); }
+.sidebar #nav-vibe { color: #d8c5f2; }
+.sidebar #nav-vibe:hover { background: rgba(165,133,208,.14); }
+.sidebar #nav-vibe.active { background: rgba(165,133,208,.14); box-shadow: inset 2px 0 0 #d8c5f2; color: #d8c5f2; }
+.sidebar #nav-hook { color: #a9d8cf; }
+.sidebar #nav-hook:hover { background: rgba(105,172,160,.13); }
+.sidebar #nav-hook.active { background: rgba(105,172,160,.13); box-shadow: inset 2px 0 0 #a9d8cf; color: #a9d8cf; }
 .new-badge { background: transparent; color: var(--ember); border: 1px solid rgba(255,107,53,.5); border-radius: 3px; }
 .engine.ok .dot { background: var(--lux); box-shadow: 0 0 0 3px rgba(240,162,60,.18), 0 0 10px rgba(240,162,60,.6); }
 

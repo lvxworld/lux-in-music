@@ -35,3 +35,4 @@ packages = ["studio"]
 
 [tool.hatch.build.targets.wheel.force-include]
 "studio/data/vibe-style-catalog.json" = "studio/data/vibe-style-catalog.json"
+"studio/static/audio/luke-real-performance-hook-demo.wav" = "studio/static/audio/luke-real-performance-hook-demo.wav"

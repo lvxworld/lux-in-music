@@ -167,6 +167,14 @@ Lux remembers your choice. Animation stops in pause and when the tab is hidden.
 Reduced-motion preferences disable the effects and keep the slideshow manual.
 Lux releases the embedding model when you leave Vibe.
 
+### Build a song from your melody with Hook
+
+Hook uses SheetSage2 to transcribe the leading melody from a local recording, including recordings with accompaniment. In Settings, review the licenses for SheetSage2 and its MERT component (both **CC BY-NC 4.0**) and explicitly choose **Download and prepare Hook**. The model files are about **2.76 GB**; Lux prepares an isolated Python 3.11 runtime. This does not change the selected music model. Analysis runs locally in FP32, uses Apple Metal when available and falls back to CPU. After installation, it works offline.
+
+Open **Hook** and try the bundled example performance by Luke, played and recorded by Luke (not AI-generated), or record/upload one 2–90 second audio file (up to 25 MB). Listen to the extracted melody and check its tempo. Choose **Develop into a song** to guide the planned chorus, or **Arrange this recording** to use the melody-only score and its approximate length. Then select **Use in Create**, review your style, and start the normal generation flow. Hook never starts generation by itself.
+
+The score is a musical guide; it does not preserve the original voice or instrument sound. Transcription and arrangement quality can vary, so listen to the preview before continuing. Recordings and temporary analysis files are removed after analysis and are not saved to the song library.
+
 ### 5. Create your first song
 
 Lux infers song length during generation. The current release includes this
