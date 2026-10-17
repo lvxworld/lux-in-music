@@ -20,6 +20,12 @@ Shared song inputs, queue, results and library use provider/profile contracts.
 WAV rates. `studio/providers.py` owns audio.cpp transport, process lifecycle and
 runtime probes. Generation and separation have separate lazy runtime slots.
 
+Create's YuE2 Advanced controls include short hover and keyboard-focus help. The
+descriptions follow the [audio.cpp YuE2 reference](https://github.com/0xShug0/audio.cpp/blob/main/docs/models/yue2.md):
+semantic-token sampling controls, route-specific automatic guidance defaults,
+and the eight-step default for NAR audio rendering. The help explains practical
+tradeoffs without promising that a setting will improve a particular song.
+
 Studio Mode section edits accept an optional, bounded text direction separate
 from lyrics. The YuE2 edit adapter adds it to a temporary style prompt while it
 samples the selected semantic section; the edit pipeline still separates and

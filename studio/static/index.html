@@ -52,8 +52,6 @@
   <section class="create">
     <form id="form" autocomplete="off">
       <div class="demo-row" id="demo-row"></div>
-      <div class="create-vibe-reference" id="create-vibe-reference" hidden></div>
-      <div class="hook-reference" id="create-hook-reference" hidden></div>
       <details class="genre-templates" id="genre-templates">
         <summary>Genre templates <span class="meta">5 presets</span></summary>
         <p class="hint">Uses the Melodic Techno demo lyrics with your chosen style. Keeps your title and settings.</p>
@@ -63,6 +61,8 @@
       <div class="field">
         <input id="title" class="title-input" placeholder="Untitled song" maxlength="80">
       </div>
+      <div class="create-vibe-reference" id="create-vibe-reference" hidden></div>
+      <div class="hook-reference" id="create-hook-reference" hidden></div>
 
       <div class="field">
         <div class="label-row"><label for="lyrics">Lyrics <span class="meta">(optional)</span></label><span class="meta" id="lyrics-count"></span>
@@ -82,7 +82,10 @@ The last light fades, the night grows calm</textarea>
 
       <div class="field">
         <div class="label-row"><label for="style">Style of music</label>
-          <button type="button" class="link" id="style-clear">Clear</button></div>
+          <div class="style-actions">
+            <button type="button" class="icon-btn style-random" id="style-random" aria-label="Suggest a random music style" title="Suggest a random music style">🎲</button>
+            <button type="button" class="link" id="style-clear">Clear</button>
+          </div></div>
         <textarea id="style" rows="2" required spellcheck="false">English, indie pop, bright acoustic guitar, soft drums, warm lead vocal, polished demo mix</textarea>
         <div class="chip-groups" id="chips"></div>
       </div>
@@ -123,7 +126,7 @@ The last light fades, the night grows calm</textarea>
         <summary><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>Advanced <button type="button" class="link" id="adv-reset">Reset</button></summary>
         <div id="sliders"></div>
         <div class="field">
-          <label for="abc">ABC score <span class="meta">(Melody / Full score only)</span></label>
+          <div class="label-row"><label for="abc">ABC score <span class="meta">(Melody / Full score only)</span></label><button type="button" class="advanced-help" aria-label="Help for ABC score"><span aria-hidden="true">i</span><span role="tooltip">Optional sheet music in ABC notation. Add a score here to guide Melody or Full score planning.</span></button></div>
           <textarea id="abc" rows="4" spellcheck="false" placeholder="X:1&#10;M:4/4&#10;K:C&#10;..."></textarea>
         </div>
       </details>
@@ -134,6 +137,11 @@ The last light fades, the night grows calm</textarea>
       </div>
     </form>
   </section>
+
+  <div class="panel-resizer" id="panel-resizer" role="separator" tabindex="0"
+       aria-label="Resize Create and Library panels" aria-orientation="vertical"
+       aria-valuemin="400" aria-valuemax="1200" aria-valuenow="580"
+       title="Drag to resize Create and Library"></div>
 
   <!-- Studio Mode -->
   <section class="lux" id="lux"></section>

@@ -31,6 +31,8 @@ body.hook-mode .create, body.hook-mode .workspace, body.hook-mode .settings, bod
 .hook-input-settings select { max-width: 100%; }
 .hook-status { min-height: 22px; }
 .hook-card .hook-warning { border-left: 2px solid var(--lux); padding: 12px 14px; background: rgba(240,162,60,.06); color: var(--text); }
+.hook-card .hook-lyrics-note { border-left: 2px solid var(--lux); padding: 10px 13px; background: rgba(240,162,60,.045); font-size: 13px; }
+.hook-card .hook-lyrics-note b { color: var(--text); }
 .hook-status .vibe-spinner { display: inline-block; vertical-align: middle; margin-right: 8px; }
 .hook-reference { display: flex; gap: 12px; align-items: center; padding: 14px; margin: 16px 0; border: 1px solid rgba(240,162,60,.3); border-radius: 9px; background: var(--raise); }
 .hook-reference div { flex: 1; }

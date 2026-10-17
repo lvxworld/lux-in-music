@@ -1,5 +1,50 @@
 # Project handoff
 
+## Resizable Create and Library panels
+
+- Create now opens wider by default, while protecting a readable minimum
+  Library width of 360 px on wide layouts and 320 px on compact desktop layouts.
+  The separator is draggable, keyboard adjustable,
+  and remembers its width locally. It is hidden on mobile and non-Create pages.
+- The divider's dynamic maximum now caps Create at 48% of the available pane
+  width, preserving at least 52% for Library. Assistive technology also reports
+  both pane widths while resizing.
+- Added a 🎲 button beside the Style of music label, matching the seed control.
+  It composes a random style from the existing genre, mood, instrument, vocal
+  and mix options, then updates the matching chips for further editing.
+- Song detail actions group WAV, FLAC, MP3 and an available score under Export;
+  playback, Studio Mode, reuse and delete are arranged as separate actions.
+- Hook reference audio in song details now loads metadata immediately so the
+  native player has its full timeline and controls on first render. Older Hook
+  songs without a saved source recording say explicitly why playback is missing.
+- Vibe image and Hook audio reference cards now appear directly below the song
+  title in Create, keeping source assets beside the song identity.
+- Added browser-flow coverage for pointer resizing, keyboard adjustment,
+  persisted width, and export grouping, plus static UI regression checks.
+- Verification: `.venv/bin/python scripts/check.py --full` passes (183 offline
+  tests). Browser-flow execution could not start: Playwright is absent from the
+  system Python environment, and the offline `uv` attempt could not access its
+  cache under the filesystem sandbox.
+
+## YuE2 Advanced parameter help
+
+- Added concise English explanations to all six Advanced sliders and the
+  optional ABC score field. Help opens on hover and keyboard focus, following
+  the explanations and defaults in the official audio.cpp YuE2 reference.
+- Added browser-flow assertions for tooltip presence and both interaction modes,
+  plus an API/static regression check for the help content.
+- The descriptions explain sampling and rendering tradeoffs without promising
+  audio-quality gains from increasing a setting.
+- Left-column tooltips now open from the icon toward the Create panel instead
+  of extending underneath the sidebar; right-column tooltips open inward too.
+- Hook now explains that its melody-reference workflow currently creates
+  instrumental songs only because it cannot yet combine the reference with
+  sung lyrics. The misleading suggestion to use lyrics in Arrange was removed.
+- Verification: the latest `.venv/bin/python scripts/check.py --full` passes
+  (183 offline tests, including the baseline). Browser-flow execution could not
+  start: Playwright is absent from the system Python environment, and the offline
+  `uv` attempt could not access its cache under the filesystem sandbox.
+
 ## Studio Mode edit direction
 
 - Added an optional “Direction for this part” field to the selected-section
@@ -1057,3 +1102,26 @@ original 71.65-second WAV is included as a static app asset and in the built whe
 The left navigation now uses the same Vibe lavender and Hook aqua as the
 corresponding Library badges, including their selected and hover states. Browser
 coverage checks that navigation and badge colors stay in sync.
+
+## Studio Mode regenerated take labels
+
+Regenerated versions are now shown as small Original and Take labels below the
+Mute/Solo and volume controls on the affected track in Studio Mode. Hovering or
+focusing a take opens a compact helper with the saved regeneration time range
+and its waveform, highlighting the edited region within the full track. The
+helper closes on pointer exit, blur, Escape, scrolling or leaving Studio Mode.
+It opens below the take label with an opaque panel background, outside the track's
+clipping container. The Regenerate button now sits below the optional direction
+textarea instead of beside the selection controls.
+The top selector contains only separation sets;
+choosing a take or Original loads the corresponding stem set and keeps the
+parent separation selected above. Browser coverage includes multiple takes on
+one track, verifies the control order, hover/focus helper and highlighted range,
+checks other tracks have no version labels, and switches between a take and the
+original. Full offline checks passed (183 tests). A focused Chrome smoke test
+passed desktop/mobile helper position, opaque background, waveform range,
+pointer/focus/Escape dismissal, version selection, navigation cleanup and the
+Regenerate button position; screenshots were inspected. No JavaScript errors
+occurred in that smoke test. The full browser flow reached these Studio checks
+but failed later because an Advanced tooltip extends into the sidebar. That
+separate layout failure is the next concrete browser regression to resolve.

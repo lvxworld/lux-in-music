@@ -69,15 +69,15 @@ const Hook = (() => {
         <p>Listen before continuing. If the melody sounds wrong, trim a clearer phrase, set the recording tempo, or record a solo take.${result.melody.octave_shift ? ' The preview moves the melody by whole octaves into a more usable register.' : ''}</p>
         <div class="hook-actions"><div class="hook-choice"><label for="hook-mode">How should Lux use it?</label><select id="hook-mode"><option value="develop" ${mode === 'develop' ? 'selected' : ''}>Develop into a song</option><option value="arrange" ${mode === 'arrange' ? 'selected' : ''}>Arrange this recording</option></select></div>
         <div class="hook-choice"><label for="hook-target">Use the melody as</label><select id="hook-target"><option value="vocal" ${target === 'vocal' ? 'selected' : ''}>Vocal melody</option><option value="instrumental" ${target === 'instrumental' ? 'selected' : ''}>Instrumental hook</option></select></div></div>
-        <p id="hook-mode-help">${modeHelp()}</p><p class="hint">A new performance is generated. Your original voice and guitar sound are not retained. Melody matching is guidance, not a guarantee of identical notes. Hook extracts one melody; it does not identify instruments, chords or a style. Your style comes from Create and stays editable there.</p>
+        <p id="hook-mode-help">${modeHelp()}</p><p class="hook-lyrics-note"><b>Instrumental for now:</b> Hook does not yet combine its recorded melody reference with sung lyrics. Lux therefore turns lyrics off for songs made from a Hook recording.</p><p class="hint">A new performance is generated. Your original voice and guitar sound are not retained. Melody matching is guidance, not a guarantee of identical notes. Hook extracts one melody; it does not identify instruments, chords or a style. Your style comes from Create and stays editable there.</p>
         <div class="hook-actions"><button class="btn primary" id="hook-use" type="button" ${disabled || !Settings.capability().hook ? 'disabled' : ''}>Use in Create</button></div>
         ${!Settings.capability().hook ? '<p class="hint">Select a compatible music model such as YuE2 in Settings to continue.</p>' : ''}</section>` : ''}`;
     bind(); draw(); renderInputs();
   }
 
   function modeHelp() {
-    return mode === "develop" ? "Lux plans a complete song from your lyrics and style, then fits your melody into its chorus sections. Timing adapts to the arrangement. If no chorus is found, it uses an interior lead phrase." :
-      "Lux follows the recording’s melody and approximate length, rounded to bars with a short ending. Use lyrics that fit this short arrangement, or choose Instrumental in Create.";
+    return mode === "develop" ? "Lux plans an instrumental song from your style, then fits your melody into its chorus sections. Timing adapts to the arrangement. If no chorus is found, it uses an interior lead phrase." :
+      "Lux follows the recording’s melody and approximate length, rounded to bars with a short ending.";
   }
 
   function bind() {
@@ -303,7 +303,7 @@ const Hook = (() => {
   function renderReference() {
     const el = $("create-hook-reference");
     el.hidden = !createReference;
-    el.innerHTML = createReference ? `<div><b>Hook · Your recorded melody</b><p>${createReference.notes.length} notes · ${createReference.bpm} BPM · ${createReference.mode === 'develop' ? 'Develop into a song' : 'Arrange recording'} · ${createReference.target === 'vocal' ? 'Vocal melody' : 'Instrumental hook'}. Hook generations are instrumental for now; lyrics are disabled while this reference is active.</p></div><button class="btn" type="button" id="hook-remove-reference">Remove</button>` : '';
+    el.innerHTML = createReference ? `<div><b>Hook · Your recorded melody</b><p>${createReference.notes.length} notes · ${createReference.bpm} BPM · ${createReference.mode === 'develop' ? 'Develop into a song' : 'Arrange recording'} · ${createReference.target === 'vocal' ? 'Vocal melody' : 'Instrumental hook'}. Hook songs are instrumental for now because this workflow cannot yet combine the recorded melody reference with sung lyrics. Lyrics are disabled while the reference is active.</p></div><button class="btn" type="button" id="hook-remove-reference">Remove</button>` : '';
     $("hook-remove-reference")?.addEventListener("click", clearReference);
   }
   function clearReference() {

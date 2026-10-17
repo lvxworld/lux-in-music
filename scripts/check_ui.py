@@ -168,11 +168,15 @@ def check_hook(browser, url, artifacts, expect):
     expect(page.locator("#hook-use")).to_be_enabled()
     expect(page.locator("#hook")).to_contain_text("SheetSage2 analyzed the recording locally.")
     expect(page.locator("#hook")).to_contain_text("Your style comes from Create")
+    expect(page.locator(".hook-lyrics-note")).to_contain_text("does not yet combine its recorded melody reference with sung lyrics")
+    expect(page.locator("#hook-mode-help")).to_contain_text("instrumental song")
     expect(page.locator("#hook-melody-audio")).to_have_attribute("src", re.compile("blob:"))
     assert len(analyses) == 1 and not generated
     page.screenshot(path=str(artifacts / "hook-desktop.png"))
     page.locator("#hook-use").click()
     expect(page.locator(".create")).to_be_visible(); expect(page.locator("#create-hook-reference")).to_be_visible()
+    expect(page.locator("#create-hook-reference")).to_contain_text("cannot yet combine the recorded melody reference with sung lyrics")
+    assert page.evaluate("document.querySelector('#create-hook-reference').getBoundingClientRect().top > document.querySelector('#title').getBoundingClientRect().bottom")
     assert page.evaluate("({title:$('title').value, lyrics:$('lyrics').value, style:$('style').value, seed:$('seed').value, adv:{...state.adv}})") == before
     expect(page.locator("#cot [data-v='melody']")).to_have_class("on")
     assert not generated
@@ -356,6 +360,11 @@ def main():
                     page.screenshot(path=str(args.artifacts / "settings-desktop.png"))
                     page.locator("#nav-create").click()
                     expect(page.locator("#go")).to_be_enabled()
+                    page.evaluate("window.__originalRandom = Math.random; Math.random = () => 0")
+                    page.locator("#style-random").click()
+                    expect(page.locator("#style")).to_have_value("English, pop, uplifting, 70 BPM, acoustic guitar, electric guitar, female vocal, polished demo mix")
+                    expect(page.locator("#chips .chip.on")).to_have_count(6)
+                    page.evaluate("Math.random = window.__originalRandom")
                     expect(page.locator("#cot")).to_be_hidden()  # the fake provider offers no planning
                     expect(page.locator("#abc")).to_be_hidden()
                     expect(page.locator("#demo-row [data-demo='lux-tenebris']")).to_have_count(1)
@@ -380,7 +389,7 @@ def main():
                     page.locator("#style").fill("My custom sound")
                     expect(page.locator("[data-template='progressive-metal']")).to_have_attribute("aria-pressed", "false")
                     page.locator("[data-template='progressive-metal']").click()
-                    assert page.locator(".create").bounding_box()["width"] == 520
+                    assert 520 < page.locator(".create").bounding_box()["width"] <= 580
                     page.locator(".create").evaluate("panel => panel.scrollTop = 0")
                     page.screenshot(path=str(args.artifacts / "templates-desktop.png"))
                     for width in [1280, 1024, 900, 390]:
@@ -411,6 +420,7 @@ def main():
                     assert page.evaluate("({lyrics: $('lyrics').value, title: $('title').value, seed: $('seed').value, cot: state.cot})") == before_vibe
                     assert len(generation_posts) == posts_before_vibe
                     expect(page.locator("#create-vibe-reference")).to_be_visible()
+                    assert page.evaluate("document.querySelector('#create-vibe-reference').getBoundingClientRect().top > document.querySelector('#title').getBoundingClientRect().bottom")
                     page.locator("#title").fill("Synthetic Vibe cover")
                     page.locator("#go").click()
                     vibe_row = page.locator(".song[data-name]").filter(has_text="Synthetic Vibe cover")
@@ -550,10 +560,20 @@ def main():
                     page.evaluate("audio.pause(); audio.loop = false; setTrack(state.library.find(s => s.name === 'legacy-song'))")
                     page.set_viewport_size({"width": 1440, "height": 1000})
                     def stem_set(route):
-                        route.fulfill(json=[{"id": "vocals", "mode": "vocals", "mode_label": "Vocals / Instrumental",
+                        base = {"id": "vocals", "mode": "vocals", "mode_label": "Vocals / Instrumental",
                             "prompt": None, "elapsed_s": 0.1, "stems": [{"id": name, "label": name,
                                 "file": f"ui-stems/{name}.wav", "peaks": [0.1] * 16, "rms_db": -20, "silent": False}
-                                for name in ("vocals", "instrumental")]}])
+                                for name in ("vocals", "instrumental")]}
+                        takes = []
+                        for number in (1, 2):
+                            stems = [dict(stem) for stem in base["stems"]]
+                            stems[0]["file"] = f"ui-stems/vocals-take-{number}.wav"
+                            takes.append({"id": f"vocals-edit-{number}", "base": "vocals", "mode": "vocals",
+                                "mode_label": "Vocals / Instrumental", "prompt": None, "elapsed_s": 0.1,
+                                "created": f"2026-10-17T00:00:0{number}", "edit": {"stem": "vocals", "label": "vocals",
+                                    "start_s": 2, "end_s": 5}, "stems": stems})
+                        route.fulfill(json=[base, *takes])
+                    page.route("**/outputs/ui-stems/*", lambda route: route.fulfill(body=reactive_wav(), content_type="audio/wav"))
                     page.route("**/api/lux/*", stem_set)
                     page.route("**/api/beats/*", lambda route: route.fulfill(json={"bpm": 120, "offset_s": 0, "beat_s": 0.5, "beats_per_bar": 4}))
                     page.locator("#nav-vibe").click()
@@ -566,9 +586,46 @@ def main():
                     song = page.evaluate("state.library.find((song) => song.name !== 'legacy-song').name")
                     page.evaluate("name => Lux.open(name)", song)
                     expect(page.locator(".lx-track")).to_have_count(2)
+                    expect(page.locator(".lx-tabs button")).to_have_count(1)
+                    expect(page.locator(".lx-track").nth(0).locator(".lx-track-versions .lx-version")).to_have_text(["Original", "Take 1", "Take 2"])
+                    expect(page.locator(".lx-track").nth(1).locator(".lx-track-versions")).to_have_count(0)
+                    track = page.locator(".lx-track").first
+                    assert track.locator(".lx-track-versions").bounding_box()["y"] > track.locator(".lx-tbtns").bounding_box()["y"]
+                    take1 = page.locator(".lx-version").filter(has_text="Take 1")
+                    take1.hover()
+                    expect(page.locator("#lx-take-help")).to_be_visible()
+                    expect(page.locator("#lx-take-help")).to_contain_text("Regenerated 0:02 – 0:05")
+                    expect(take1).to_have_attribute("aria-describedby", "lx-take-help")
+                    expect(page.locator("#lx-take-help canvas")).to_be_visible()
+                    assert page.locator("#lx-take-help .lx-take-wave i").evaluate("el => [el.style.left, el.style.width]") == ["10%", "15%"]
+                    expect(page.locator("#lx-take-help")).to_be_in_viewport()
+                    helper = page.locator("#lx-take-help")
+                    assert helper.bounding_box()["y"] >= take1.bounding_box()["y"] + take1.bounding_box()["height"]
+                    assert helper.evaluate("el => getComputedStyle(el).backgroundColor") == "rgb(20, 19, 22)"
+                    page.screenshot(path=str(args.artifacts / "studio-take-helper.png"))
+                    track.locator("[data-lx='mute']").hover()
+                    expect(page.locator("#lx-take-help")).to_have_count(0)
+                    take1.focus()
+                    expect(page.locator("#lx-take-help")).to_be_visible()
+                    page.keyboard.press("Escape")
+                    expect(page.locator("#lx-take-help")).to_have_count(0)
+                    page.locator(".lx-version").filter(has_text="Take 2").click()
+                    expect(page.locator(".lx-version.on")).to_have_text("Take 2")
+                    expect(page.locator(".lx-tabs button.on")).to_have_count(1)
+                    page.locator(".lx-version").filter(has_text="Original").click()
+                    expect(page.locator(".lx-version.on")).to_have_text("Original")
                     expect(page.locator(".lx-edit-btn")).to_have_count(2)
                     page.locator(".lx-edit-btn").first.click()
                     expect(page.locator("#lx-editbar")).to_contain_text("Editing vocals")
+                    lane = page.locator(".lx-lane canvas").first.bounding_box()
+                    page.mouse.move(lane["x"] + lane["width"] * .2, lane["y"] + lane["height"] / 2)
+                    page.mouse.down()
+                    page.mouse.move(lane["x"] + lane["width"] * .4, lane["y"] + lane["height"] / 2, steps=4)
+                    page.mouse.up()
+                    direction = page.locator("[data-lx='eb-direction']")
+                    expect(direction).to_be_visible()
+                    regenerate = page.locator("[data-lx='eb-go']")
+                    assert regenerate.bounding_box()["y"] >= direction.bounding_box()["y"] + direction.bounding_box()["height"]
                     page.locator("[data-lx='new']").click()
                     expect(page.locator("[data-lx='mode'][data-mode='anything']")).to_have_count(0)
                     expect(page.locator("[data-lx='mode']")).to_have_count(3)
@@ -584,12 +641,48 @@ def main():
                     page.route("**/api/settings/status", duration_capability)
                     page.locator("#nav-create").click()
                     page.evaluate("Settings.refresh(true)")
+                    divider = page.locator("#panel-resizer")
+                    expect(divider).to_be_visible()
+                    width_before = page.locator(".create").evaluate("el => el.getBoundingClientRect().width")
+                    drag = divider.bounding_box()
+                    page.mouse.move(drag["x"] + drag["width"] / 2, drag["y"] + 160)
+                    page.mouse.down()
+                    page.mouse.move(drag["x"] + drag["width"] / 2 + 64, drag["y"] + 160, steps=4)
+                    page.mouse.up()
+                    width_after_drag = page.locator(".create").evaluate("el => el.getBoundingClientRect().width")
+                    assert width_after_drag >= width_before + 50, (width_before, width_after_drag)
+                    expect(divider).to_have_attribute("aria-valuenow", str(round(width_after_drag)))
+                    divider.focus(); page.keyboard.press("ArrowLeft")
+                    width_after_key = page.locator(".create").evaluate("el => el.getBoundingClientRect().width")
+                    assert width_after_key < width_after_drag
+                    assert page.evaluate("localStorage.getItem('lux.createWidth')") == str(round(width_after_key))
+                    divider.focus(); page.keyboard.press("End")
+                    width_at_max = page.locator(".create").evaluate("el => el.getBoundingClientRect().width")
+                    available_width = page.evaluate("document.querySelector('.app').clientWidth - document.querySelector('.sidebar').getBoundingClientRect().width - document.querySelector('#panel-resizer').offsetWidth")
+                    library_at_max = page.locator(".workspace").evaluate("el => el.getBoundingClientRect().width")
+                    assert width_at_max <= available_width * 0.48 + 1, (width_at_max, available_width)
+                    assert library_at_max >= available_width * 0.52 - 1, (library_at_max, available_width)
                     expect(page.locator("#duration-mode")).to_have_count(0)
                     expect(page.locator("#duration-hint")).to_be_visible()
                     page.locator("#lyrics").fill("[Verse]\n" + "light " * 100)
                     expect(page.locator("#lyrics-advice")).to_contain_text("closing lyric phrase")
                     expect(page.locator("#cot")).to_be_visible()
                     expect(page.locator("#cot [data-v='off']")).to_have_class("on")
+                    page.locator(".advanced summary").click()
+                    expect(page.locator(".advanced-help")).to_have_count(7)
+                    for help_button in page.locator(".advanced-help:visible").all():
+                        help_button.hover()
+                        expect(help_button.locator("[role='tooltip']")).to_be_visible()
+                        if help_button.locator("[role='tooltip']").is_visible():
+                            geometry = page.evaluate("""button => {
+                                const tip = button.querySelector('[role=tooltip]').getBoundingClientRect();
+                                const pane = document.querySelector('.create').getBoundingClientRect();
+                                const sidebar = document.querySelector('.sidebar').getBoundingClientRect();
+                                return {tipLeft: tip.left, paneLeft: pane.left, sidebarRight: sidebar.right};
+                            }""", help_button.element_handle())
+                            assert geometry["tipLeft"] >= geometry["paneLeft"] and geometry["tipLeft"] >= geometry["sidebarRight"], geometry
+                    page.locator(".advanced-help").first.focus()
+                    expect(page.locator(".advanced-help").first.locator("[role='tooltip']")).to_be_visible()
                     for mode in ("off", "melody", "full"):
                         button = page.locator(f"#cot [data-v='{mode}']")
                         expect(button.locator("svg")).to_have_count(1)
@@ -630,7 +723,37 @@ def main():
                     page.unroute("**/api/jobs")
                     analysis_capable = False
                     page.evaluate("Settings.refresh(true)")
+                    page.route("**/outputs/synthetic-hook-reference.wav", lambda route: route.fulfill(body=reactive_wav(), content_type="audio/wav"))
+                    page.evaluate("""async () => {
+                        const base = state.library.find(s => s.name === 'legacy-song');
+                        window.__hookAudioLayoutFixture = {...base, name: 'hook-audio-layout', title: 'Hook audio layout',
+                            params: {...base.params, hook_melody: {mode: 'arrange', target: 'instrumental', notes: Array(143).fill({pitch: 60}), bpm: 63}},
+                            artifacts: {hook_reference_audio: 'synthetic-hook-reference.wav'}};
+                        await openDrawer(window.__hookAudioLayoutFixture);
+                    }""")
+                    expect(page.locator("#drawer .hook-reference-player")).to_be_visible()
+                    expect(page.locator("#drawer .hook-reference-player")).to_have_attribute("preload", "metadata")
+                    page.wait_for_function("document.querySelector('#drawer .hook-reference-player').readyState >= 1")
+                    audio_layout = page.evaluate("""() => {
+                        const audio = document.querySelector('#drawer .hook-reference-player').getBoundingClientRect();
+                        const section = document.querySelector('#drawer .d-hook-audio').getBoundingClientRect();
+                        return {audio: audio.width, section: section.width};
+                    }""")
+                    assert audio_layout["audio"] > 280 and abs(audio_layout["audio"] - audio_layout["section"]) < 2, audio_layout
+                    page.evaluate("closeDrawer(); window.__hookAudioLayoutFixture = null")
+                    page.evaluate("""async () => {
+                        const base = state.library.find(s => s.name === 'legacy-song');
+                        await openDrawer({...base, params: {...base.params, hook_melody: {mode: 'arrange', target: 'instrumental', notes: Array(8).fill({pitch: 60}), bpm: 120}}});
+                    }""")
+                    expect(page.locator("#drawer .d-hook-audio")).to_contain_text("original recording was not saved")
+                    page.evaluate("closeDrawer()")
                     page.locator(".song[data-name='legacy-song'] [data-act='info']").click()
+                    expect(page.locator("#drawer .d-export-group h4")).to_have_text("Export")
+                    audio_exports = page.locator("#drawer .d-export-actions a")
+                    expect(audio_exports).to_have_count(3)
+                    assert [audio_exports.nth(i).inner_text() for i in range(3)] == ["WAV", "FLAC", "MP3"]
+                    export_boxes = audio_exports.evaluate_all("links => links.map(a => { const r = a.getBoundingClientRect(); return [r.x, r.y, r.width] })")
+                    assert len({round(box[1]) for box in export_boxes}) == 1, export_boxes
                     for fmt, media in {"flac": "audio/flac", "mp3": "audio/mpeg"}.items():
                         link = page.locator(f"#drawer a[href='/api/export/legacy-song?format={fmt}']")
                         expect(link).to_have_text(fmt.upper())

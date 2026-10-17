@@ -61,6 +61,80 @@ class ProductIdentityTests(unittest.TestCase):
         self.assertNotIn("/api/duration-analysis", script.text)
         self.assertIn("variations: state.variations", script.text)
 
+    def test_create_reference_cards_follow_song_title(self):
+        page = self.get("/")
+        self.assertEqual(page.status_code, 200)
+        title = page.text.index('id="title"')
+        vibe_reference = page.text.index('id="create-vibe-reference"')
+        hook_reference = page.text.index('id="create-hook-reference"')
+        self.assertLess(title, vibe_reference)
+        self.assertLess(title, hook_reference)
+        self.assertLess(vibe_reference, hook_reference)
+
+    def test_style_has_an_accessible_randomizer(self):
+        page = self.get("/")
+        script = self.get("/static/app.js")
+        styles = self.get("/static/app.css")
+        self.assertIn('class="icon-btn style-random" id="style-random" aria-label="Suggest a random music style"', page.text)
+        self.assertIn("🎲</button>", page.text)
+        self.assertIn('$("style-random").onclick', script.text)
+        self.assertIn("sample(CHIPS.Instr", script.text)
+        self.assertIn(".style-random { width: 28px; height: 28px", styles.text)
+        self.assertIn(".icon-btn:hover", styles.text)
+
+    def test_advanced_controls_have_plain_language_help(self):
+        page = self.get("/")
+        script = self.get("/static/app.js")
+        styles = self.get("/static/app.css")
+        self.assertEqual(page.status_code, 200)
+        self.assertEqual(script.status_code, 200)
+        self.assertEqual(styles.status_code, 200)
+        self.assertIn('class="advanced-help" aria-label="Help for ${s.label}"', script.text)
+        self.assertIn("How many passes YuE2 uses to turn the music tokens into sound", script.text)
+        self.assertIn("Auto uses 1.01 for Direct and 1.0 for Melody or Full score", script.text)
+        self.assertEqual(page.text.count('class="advanced-help"'), 1)  # ABC score; sliders are model-driven
+        self.assertIn('aria-label="Help for ABC score"', page.text)
+        self.assertIn(".slider:nth-child(even) .advanced-help [role=tooltip]", styles.text)
+        self.assertIn("left: 0; bottom: calc(100% + 9px)", styles.text)
+
+    def test_hook_explains_why_lyrics_are_disabled(self):
+        script = self.get("/static/hook.js")
+        self.assertEqual(script.status_code, 200)
+        self.assertIn("does not yet combine its recorded melody reference with sung lyrics", script.text)
+        self.assertIn("cannot yet combine the recorded melody reference with sung lyrics", script.text)
+        self.assertNotIn("Use lyrics that fit this short arrangement", script.text)
+
+    def test_create_and_library_have_an_accessible_resizable_split(self):
+        page = self.get("/")
+        script = self.get("/static/app.js")
+        styles = self.get("/static/app.css")
+        self.assertIn('id="panel-resizer" role="separator" tabindex="0"', page.text)
+        self.assertIn('aria-label="Resize Create and Library panels"', page.text)
+        self.assertIn("grid-template-columns: 220px minmax(400px, var(--create-width, 580px)) 12px", styles.text)
+        self.assertIn('localStorage.setItem("lux.createWidth"', script.text)
+        self.assertIn("Math.floor(trackWidth() * 0.48)", script.text)
+        self.assertIn("Library ${Math.round(trackWidth() - width)} pixels", script.text)
+        self.assertIn("narrow() ? 320 : 360", script.text)
+        self.assertIn('event.key === "ArrowLeft"', script.text)
+        self.assertIn('event.key === "ArrowRight"', script.text)
+
+    def test_song_details_group_audio_exports_together(self):
+        script = self.get("/static/app.js")
+        styles = self.get("/static/app.css")
+        self.assertIn('<section class="d-export-group" aria-labelledby="d-export-title">', script.text)
+        self.assertIn('<h4 id="d-export-title">Export</h4>', script.text)
+        self.assertIn("class=\"d-export-actions\"", script.text)
+        self.assertIn(".d-export-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr))", styles.text)
+
+    def test_hook_reference_player_fills_its_detail_section(self):
+        script = self.get("/static/app.js")
+        styles = self.get("/static/app.css")
+        self.assertIn('class="d-sec d-hook-audio"', script.text)
+        self.assertIn('controls preload="metadata"', script.text)
+        self.assertIn("The original recording was not saved with this song", script.text)
+        self.assertIn("#drawer .d-hook-audio { align-self: stretch; width: 100%", styles.text)
+        self.assertIn("#drawer audio.hook-reference-player { display: block; width: 100% !important", styles.text)
+
     def test_generation_api_schema_does_not_advertise_duration_controls(self):
         schema = self.get("/openapi.json").json()
         ref = schema["paths"]["/api/generate"]["post"]["requestBody"]["content"]["application/json"]["schema"]["$ref"]
