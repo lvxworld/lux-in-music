@@ -303,9 +303,13 @@ def main():
                     errors = []; page.on("pageerror", lambda error: errors.append(str(error)))
                     page.route("https://**/*", lambda route: route.abort())  # external fonts are optional
                     page.goto(url); page.wait_for_url("**/#/settings")
+                    expect(page.locator(".brand")).to_have_attribute("aria-label", "Lux In Music")
+                    expect(page.locator(".brand-sub")).to_have_count(0)
+                    assert page.locator(".logo img").evaluate("img => img.complete && img.naturalWidth > 0")
                     default_lyrics = page.locator("#lyrics").input_value()
                     assert default_lyrics.startswith("[Verse]\n") and "[Outro]\n" in default_lyrics
-                    expect(page.locator("#nav-vibe .new-badge")).to_have_text("NEW")
+                    expect(page.locator("#nav-hook .new-badge")).to_have_text("NEW")
+                    expect(page.locator("#nav-vibe .new-badge")).to_have_count(0)
                     expect(page.locator("#nav-lux .new-badge")).to_have_count(0)
                     expect(page.locator("#vibe-model-card")).to_be_visible()
                     assert abs(page.locator("#vibe-model-card").bounding_box()["width"] - page.locator("#model-test-model").bounding_box()["width"]) < 1

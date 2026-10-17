@@ -1,7 +1,7 @@
 /* ============================================================
    LUX IN MUSIC: theme after "Lux In Tenebris" (luxintenebris.news)
    A dark broadsheet; amber lamplight is the only light.
-   Watercolour on aged parchment for imagery. Fonts stay Inter.
+   Watercolour on aged parchment for imagery. Inter for interface text.
    ============================================================ */
 :root {
   --bg: #0e0e10;                       /* ink */
@@ -43,13 +43,16 @@ body::after {
 }
 ::selection { background: rgba(240,162,60,.35); }
 
-/* ---- brand: candle in the dark ---- */
+/* ---- brand: supplied gold artwork, with its original pixels preserved ---- */
 .sidebar { background: rgba(10,10,12,.72); }
-.logo { background: radial-gradient(circle at 50% 70%, #3a2614 0%, #17110b 70%); box-shadow: 0 0 0 1px #3a3a42, 0 6px 26px -6px rgba(240,162,60,.55); }
-.logo svg { width: 22px; height: 22px; stroke: none; }
-.brand-name { font-weight: 800; letter-spacing: .01em; }
-.brand-name .lux-word { color: var(--lux); }
-.brand-sub { font-style: italic; color: var(--lux-soft); letter-spacing: .02em; }
+.brand { gap: 0; padding: 0; }
+/* CSS viewports trim the source image's black margins; compact mode shows its symbol. */
+.logo { --crop-left: 145; --crop-top: 275; --crop-width: 1390; --crop-height: 345; position: relative; display: block; width: 100%; height: auto; aspect-ratio: var(--crop-width) / var(--crop-height); flex: none; overflow: hidden; border-radius: 0; background: none; box-shadow: none; }
+.logo img { position: absolute; display: block; width: calc(100% * 1672 / var(--crop-width)); height: auto; max-width: none; left: calc(-100% * var(--crop-left) / var(--crop-width)); top: calc(-100% * var(--crop-top) / var(--crop-height)); mix-blend-mode: screen; }
+@media (min-width: 821px) and (max-width: 1180px) {
+  .brand { justify-content: center; }
+  .brand .logo { --crop-left: 150; --crop-width: 350; --crop-height: 350; width: 40px; }
+}
 .license { font-style: italic; }
 nav a.active { background: rgba(240,162,60,.08); box-shadow: inset 2px 0 0 var(--lux); color: var(--text); }
 .sidebar #nav-vibe { color: #d8c5f2; }

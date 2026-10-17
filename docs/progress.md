@@ -1,5 +1,21 @@
 # Project handoff
 
+## Sidebar brand refresh
+
+- Added the supplied gold Lux In Music PNG as the sidebar logo. The source
+  image is copied unchanged; CSS viewports hide its black margins and show only
+  its symbol in the compact sidebar. It loads locally without remote requests.
+- A simplified SVG symbol is used for the browser favicon. The earlier font
+  proposal was replaced by the lettering in the supplied artwork.
+- Removed the Latin sidebar tagline. Moved NEW from Vibe to Hook in both
+  navigation menus, including a CSS fix so the mobile badge stays visible.
+- Verification: full offline checks passed (183 tests). A focused Chrome smoke
+  test passed exact source-image reuse with remote requests blocked, desktop and
+  compact brand layouts, mobile Hook badge visibility, and no page overflow or
+  JavaScript errors. Screenshots were inspected. The full browser flow was not
+  rerun; its previously recorded Advanced tooltip failure remains open.
+- Next step: check the published feature branch and its CI results on GitHub.
+
 ## Resizable Create and Library panels
 
 - Create now opens wider by default, while protecting a readable minimum

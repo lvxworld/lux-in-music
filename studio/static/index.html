@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Lux In Music</title>
+<link rel="icon" type="image/svg+xml" href="/static/brand/lux-mark.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/app.css">
@@ -14,19 +15,18 @@
 </head>
 <body>
 <div class="glow g1"></div><div class="glow g2"></div><div class="glow g3"></div>
-<nav class="mobile-nav" aria-label="Studio navigation"><a href="#/">Create</a><a href="#/vibe">Vibe <span class="new-badge">NEW</span></a><a href="#/hook">Hook</a><a href="#/lux">Studio Mode</a><a href="#/settings">Settings</a></nav>
+<nav class="mobile-nav" aria-label="Studio navigation"><a href="#/">Create</a><a href="#/vibe">Vibe</a><a href="#/hook">Hook <span class="new-badge">NEW</span></a><a href="#/lux">Studio Mode</a><a href="#/settings">Settings</a></nav>
 
 <div class="app">
   <!-- Sidebar -->
   <aside class="sidebar">
-    <div class="brand">
-      <div class="logo"><svg viewBox="0 0 24 24"><defs><radialGradient id="flame" cx="50%" cy="70%" r="60%"><stop offset="0" stop-color="#fff3c4"/><stop offset=".45" stop-color="#f7c06a"/><stop offset="1" stop-color="#e0742c"/></radialGradient></defs><path fill="url(#flame)" d="M12 2.5c.6 2.6 3.6 4.6 3.6 8.3A3.6 3.6 0 0 1 12 14.5a3.6 3.6 0 0 1-3.6-3.7c0-1.7.9-2.6 1.6-3.5.2 1 .7 1.6 1.3 1.9-.4-2.4.2-4.6.7-6.7z"/><rect x="9.6" y="15.2" width="4.8" height="6.3" rx=".6" fill="#ece6dc" opacity=".9"/></svg></div>
-      <div><div class="brand-name"><span class="lux-word">Lux</span> In Music</div><div class="brand-sub">musica in tenebris</div></div>
+    <div class="brand" role="img" aria-label="Lux In Music" title="Lux In Music">
+      <span class="logo" aria-hidden="true"><img src="/static/brand/lux-logo.png" width="1672" height="941" alt=""></span>
     </div>
     <nav>
       <a class="active" href="#/" id="nav-create"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Create <span class="count" id="lib-count">0</span></a>
-      <a href="#/vibe" id="nav-vibe"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>Vibe <span class="new-badge">NEW</span></a>
-      <a href="#/hook" id="nav-hook"><svg viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0014 0v-2M12 19v3M8 22h8"/></svg>Hook</a>
+      <a href="#/vibe" id="nav-vibe"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>Vibe</a>
+      <a href="#/hook" id="nav-hook"><svg viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0014 0v-2M12 19v3M8 22h8"/></svg>Hook <span class="new-badge">NEW</span></a>
       <a href="#/lux" id="nav-lux"><svg viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/><path d="M3 17.5l9 5 9-5" opacity=".5"/></svg>Studio Mode</a>
       <a href="#/settings" id="nav-settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.5 5.5l2 2M16.5 16.5l2 2M5.5 18.5l2-2M16.5 7.5l2-2"/></svg>Settings</a>
     </nav>

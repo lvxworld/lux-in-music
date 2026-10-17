@@ -443,7 +443,8 @@ listen to each take.
 `studio/static/theme-lux.css` follows [luxintenebris.news](https://luxintenebris.news/): ink background, warm
 newsprint text, amber lamplight as the only accent, ember used sparingly, thin rules and kickers. Covers are
 generated as watercolour on aged parchment with a sepia-ink music staff (some "in tenebris", with a candle).
-Fonts stay Inter.
+The sidebar uses the supplied gold Lux In Music logo, served locally. Its compact
+layout shows the symbol from the same artwork. Interface text uses Inter.
 
 CLI:
 
