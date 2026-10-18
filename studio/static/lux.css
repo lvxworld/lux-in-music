@@ -229,3 +229,9 @@ body.vibe-mode .create, body.vibe-mode .workspace, body.vibe-mode .lux, body.vib
 .lx-eb-listen .segmented button { padding: 6px 10px; font-size: 12px; white-space: nowrap; }
 
 .lx-eb-snap { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.vibe-lyrics { border-top: 1px solid var(--line); margin-top: 18px; padding-top: 14px; }
+.vibe-mood-row { display: grid; grid-template-columns: minmax(160px, 240px) 1fr; gap: 10px; align-items: center; }
+.vibe-mood-row label { grid-column: 1 / -1; margin: 0; }
+.vibe-mood-row select { padding: 10px; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; font: inherit; }
+.vibe-lyrics textarea { margin-top: 12px; min-height: 220px; }
+@media (max-width: 700px) { .vibe-mood-row { grid-template-columns: 1fr; } }

@@ -19,6 +19,12 @@ def main():
     vibe.state_path = fixture.root / "vibe-state.json"
     vibe_patch = patch("studio.vibe._manager", vibe)
     vibe_patch.start(); fixture.addCleanup(vibe_patch.stop)
+    from studio.lyrics import LyricsWriter
+    import httpx
+    offline = httpx.MockTransport(lambda request: httpx.Response(404))  # Discovery must not probe real ports.
+    lyrics_patch = patch("studio.lyrics._writer", LyricsWriter(fixture.root / "lyrics-state",
+                                                               client=lambda: httpx.Client(transport=offline)))
+    lyrics_patch.start(); fixture.addCleanup(lyrics_patch.stop)
     fixture.catalog[0]["licenses"].append({"component": "Output permission", "id": "Creator terms",
         "url": "https://licenses.test/creator", "summary": "Individual creators may monetize outputs; company use needs a separate license.", "verified": True})
     external = copy.deepcopy(fixture.catalog[0])

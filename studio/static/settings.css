@@ -26,3 +26,13 @@
 @media (max-width: 700px) { .settings { padding: 18px; } .model-cards { grid-template-columns: 1fr; } }
 @media (max-width: 820px) { .mobile-nav { display: flex; flex-direction: row; flex-wrap: wrap; justify-content: center; position: sticky; top: 0; z-index: 20; background: var(--bg); padding: 8px; gap: 4px; border-bottom: 1px solid var(--line); } .mobile-nav a { font-size: 12px; color: var(--text); padding: 8px 10px; } }
 .model-card-group { display: contents; }
+.lyrics-form { display: flex; flex-direction: column; gap: 6px; margin: 14px 0; }
+.lyrics-form label { color: var(--muted); font-size: 12px; margin-top: 6px; }
+.lyrics-form .link { align-self: flex-start; }
+.lyrics-writer-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.lyrics-writer-actions .btn:disabled { opacity: .5; cursor: not-allowed; }
+.lyrics-form .label-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-top: 6px; }
+.lyrics-form .label-row label { margin-top: 0; }
+.lyrics-form select { width: 100%; }
+.lyrics-servers { display: flex; flex-wrap: wrap; gap: 8px; }
+.lyrics-servers .btn.on { border-color: var(--lux, #f0a23c); }

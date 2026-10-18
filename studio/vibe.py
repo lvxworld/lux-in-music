@@ -173,7 +173,7 @@ def blend_catalog(image_vectors, catalog_vectors, catalog):
         style = style.rstrip(".") + "; complementary textures: " + ", ".join(textures)
         style += "; cohesive arrangement, evolving instrumental layers, space between contrasting sections."
     pairs = [1 - float(vectors[i] @ vectors[j]) for i in range(len(vectors)) for j in range(i)]
-    return {"id": primary["id"], "style": style,
+    return {"id": primary["id"], "style": style, "mood": primary.get("mood"), "visual": primary.get("visual"),
             "entry_ids": [match["id"] for match in matches],
             "diversity": float(np.clip(np.mean(pairs), 0, 1)) if pairs else 0.0}
 
