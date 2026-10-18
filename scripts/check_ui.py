@@ -234,7 +234,8 @@ def main():
                     image_src = vibe_row.locator(".cover img").get_attribute("src")
                     saved_image = page.request.get(urljoin(page.url, image_src))
                     assert saved_image.ok and saved_image.headers["content-type"] == "image/jpeg"
-                    page.locator("#remove-vibe-cover").click()
+                    # The handoff is single-use: the next song from Create has no Vibe images.
+                    expect(page.locator("#create-vibe-reference")).to_be_hidden()
                     assert page.evaluate("Vibe.generationReference()") == {}
                     page.reload()
                     expect(vibe_row.locator(".cover img")).to_have_attribute("src", image_src)
@@ -315,6 +316,10 @@ def main():
                         page.locator("#go").click()
                     body = multi_generation.value.post_data_json
                     assert len(body["vibe_images"]) == 5 and body["model_options"]["semantic_temperature"] == 1.1
+                    expect(page.locator("#create-vibe-reference")).to_be_hidden()
+                    expect(page.locator("#semantic_temperature")).to_have_value("1")
+                    expect(page.locator("#num_inference_steps")).to_have_value("8")
+                    assert "semantic_temperature" not in page.evaluate("Settings.options()")
                     multi_row = page.locator(".song[data-name]").filter(has_text="Five-image Vibe song")
                     expect(multi_row).to_have_count(1, timeout=15000)
                     expect(multi_row).to_contain_text("Vibe · 5 images")
@@ -326,6 +331,82 @@ def main():
                         return [[300,600],[750,300],[1050,300],[750,900],[1050,900]].map(([x,y]) => Array.from(ctx.getImageData(x,y,1,1).data).slice(0,3));
                     }""", multi_cover)
                     assert all(abs(actual - expected) < 10 for pixel, color in zip(pixels, colors) for actual, expected in zip(pixel, color)), pixels
+                    # Lyrics writer: Settings, Create concept and Vibe mood use a fake OpenAI-compatible boundary.
+                    lyrics_status = {"configured": False, "base_url": "", "model": "", "api_key_set": False, "api_key_from_env": False,
+                                     "supports_images": False, "temperature": .8, "state_error": None,
+                                     "moods": [{"id": "dreamy", "label": "Dreamy", "hint": "soft"}, {"id": "hopeful", "label": "Hopeful", "hint": "bright"}]}
+                    lyrics_posts = []
+                    def lyrics_settings(route):
+                        body = route.request.post_data_json
+                        assert body["api_key"] == "sk-synthetic" and body["base_url"] == "http://llm.test/v1" and body["model"] == "model-b"
+                        lyrics_status.update(configured=True, base_url=body["base_url"], model=body["model"], api_key_set=True)
+                        route.fulfill(json=lyrics_status)
+                    def lyrics_generate(route):
+                        lyrics_posts.append(route.request.post_data_json)
+                        route.fulfill(json={"lyrics": f"[Verse]\nSynthetic written line {len(lyrics_posts)}", "used_images": 0})
+                    page.route("**/api/lyrics/status", lambda route: route.fulfill(json=lyrics_status))
+                    page.route("**/api/lyrics/settings", lyrics_settings)
+                    page.route("**/api/lyrics/test", lambda route: route.fulfill(json={"ok": True, "models": ["model-a"]}))
+                    page.route("**/api/lyrics/discover", lambda route: route.fulfill(json={"servers": [
+                        {"name": "Synthetic server", "base_url": "http://llm.test/v1", "models": ["model-a", "model-b"]}]}))
+                    page.route("**/api/lyrics/models", lambda route: route.fulfill(json={"base_url": "http://llm.test/v1", "models": ["model-a", "model-b"]}))
+                    page.route("**/api/lyrics/generate", lyrics_generate)
+                    style_posts = []
+                    def lyrics_style(route):
+                        style_posts.append(route.request.post_data_json)
+                        route.fulfill(json={"style": f"English, jazz ballad, 80 BPM, piano, strings, dreamy, smooth lead vocal, take {len(style_posts)}"})
+                    page.route("**/api/lyrics/style", lyrics_style)
+                    page.evaluate("Lyrics.refresh()")
+                    expect(page.locator("#lyrics-setup-link")).to_be_visible()
+                    expect(page.locator("#lyrics-write")).to_be_disabled()
+                    page.locator("#nav-settings").click()
+                    expect(page.locator("#lyrics-model-card")).to_be_visible()
+                    page.evaluate("Lyrics.refresh()")
+                    page.locator("#lyrics-discover").click()
+                    page.locator("[data-lyrics-server='0']").click()
+                    expect(page.locator("#lyrics-base-url")).to_have_value("http://llm.test/v1")
+                    expect(page.locator("#lyrics-model")).to_have_value("model-a")
+                    page.locator("#lyrics-model").select_option("model-b")
+                    page.locator("#lyrics-api-key").fill("sk-synthetic")
+                    page.locator("#lyrics-test").click()
+                    expect(page.locator("#lyrics-settings-message")).to_contain_text("Connected")
+                    expect(page.locator("#lyrics-api-key")).to_have_value("")
+                    expect(page.locator("#lyrics-api-key")).to_have_attribute("placeholder", re.compile("Saved"))
+                    page.locator("#nav-create").click()
+                    expect(page.locator("#lyrics-setup-link")).to_be_hidden()
+                    page.locator("#concept").fill("Synthetic concept")
+                    page.locator("#lyrics-write").click()
+                    expect(page.locator("#lyrics")).to_have_value("[Verse]\nSynthetic written line 1")
+                    assert lyrics_posts[-1]["concept"] == "Synthetic concept"
+                    assert style_posts[0]["concept"] == "Synthetic concept" and "jazz" in style_posts[0]["vocabulary"]
+                    expect(page.locator("#style")).to_have_value("English, jazz ballad, 80 BPM, piano, strings, dreamy, smooth lead vocal, take 1")
+                    assert lyrics_posts[-1]["style"].endswith("take 1")
+                    expect(page.locator(".chip[data-c='piano']")).to_have_class(re.compile("on"))
+                    expect(page.locator("#lyrics-write")).to_have_text("Regenerate")
+                    page.locator("#lyrics-write").click()
+                    expect(page.locator("#lyrics")).to_have_value("[Verse]\nSynthetic written line 2")
+                    expect(page.locator("#style")).to_have_value(re.compile("take 2$"))
+                    page.locator("#lyrics-undo").click()
+                    expect(page.locator("#lyrics")).to_have_value("[Verse]\nSynthetic written line 1")
+                    expect(page.locator("#style")).to_have_value(re.compile("take 1$"))
+                    page.unroute("**/api/vibe/analyze")
+                    page.route("**/api/vibe/analyze", lambda route: route.fulfill(json={"entry_id": entries[0]["id"], "entry_ids": [entries[0]["id"]], "image_count": 5,
+                        "style": "Synthetic multi-image direction", "mood": "hopeful", "visual": "Synthetic scene"}))
+                    page.locator("#nav-vibe").click()
+                    page.locator("#vibe-again").click()
+                    expect(page.locator("#vibe-lyrics")).to_have_value("[Verse]\nSynthetic written line 3")
+                    expect(page.locator("#vibe-mood")).to_have_value("hopeful")
+                    assert lyrics_posts[-1]["mood"] == "hopeful" and lyrics_posts[-1]["visual"] == "Synthetic scene" and lyrics_posts[-1]["images"] == []
+                    page.locator("#vibe-mood").select_option("custom")
+                    page.locator("#vibe-mood-custom").fill("Synthetic theme")
+                    page.locator("#vibe-mood-custom").press("Enter")
+                    expect(page.locator("#vibe-lyrics")).to_have_value("[Verse]\nSynthetic written line 4")
+                    assert lyrics_posts[-1]["custom"] == "Synthetic theme" and lyrics_posts[-1]["mood"] == ""
+                    page.screenshot(path=str(args.artifacts / "vibe-lyrics-desktop.png"))
+                    page.locator("#vibe-use").click()
+                    expect(page.locator("#lyrics")).to_have_value("[Verse]\nSynthetic written line 4")
+                    for path in ("status", "settings", "test", "generate", "discover", "models", "style"):
+                        page.unroute(f"**/api/lyrics/{path}")
                     page.reload()
                     tone_path = "**/outputs/" + multi_row.get_attribute("data-name") + ".wav"
                     page.route(tone_path, lambda route: route.fulfill(body=reactive_wav(), content_type="audio/wav"))
@@ -503,7 +584,7 @@ def main():
                                   "vibe_effects_toggle_persists_without_stopping_audio": True, "vibe_effects_single_media_source": True,
                                   "vibe_five_image_validation_and_order": True, "vibe_advanced_opt_out_and_transfer": True,
                                   "vibe_composite_contains_all_images": True, "vibe_carousel_auto_manual_and_pause": True,
-                                  "vibe_style_transfer_preserves_form": True, "vibe_cover_survives_reload": True,
+                                  "vibe_style_transfer_preserves_form": True, "vibe_cover_survives_reload": True, "lyrics_writer_settings_create_vibe": True,
                                   "vibe_listening_desktop_mobile": True, "vibe_close_reopen_and_resume": True,
                                   "vibe_reduced_motion": True, "settings_first": True, "license_gate": True, "independent_precision": True,
                                   "fake_download_and_activation": True, "capability_controls": True,

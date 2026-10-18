@@ -5,6 +5,7 @@ const Vibe = (() => {
   let files = [], previewUrls = [], result = null, busy = false, accepted = false, acceptanceTouched = false, analysisError = "";
   let status = null, pollTimer = null, wasVisible = false, lastSettingsJson = "";
   let createReference = null, createPreviewUrls = [], replaceNext = false, useAdvanced = true, resultProfileKey = "";
+  let lyricsText = "", mood = "", customMood = "", moodTouched = false, lyricsBusy = false, lyricsError = "", lyricsToken = 0;
   const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const current = () => location.hash === "#/vibe";
   async function request(url, options) {
@@ -54,14 +55,54 @@ const Vibe = (() => {
       </section>
       ${result ? `<section class="vibe-card vibe-result"><p class="lx-kicker">Suggested Musical Style</p><label for="vibe-style">Edit this suggestion before using it</label><textarea id="vibe-style" rows="5" maxlength="4000">${esc(result.style)}</textarea>
         ${advanced ? `<div class="vibe-advanced"><label><input type="checkbox" id="vibe-use-advanced" ${useAdvanced ? "checked" : ""}> Use image-guided Advanced settings · ${esc(advanced.label)}</label><p class="hint">${esc(advanced.explanation)}</p><ul>${Object.entries(advanced.options).map(([key, value]) => `<li>${esc(SLIDERS.find(s => s.id === key)?.label || key)}: <b>${esc(value)}</b></li>`).join("")}</ul></div>` : ""}
+        ${renderLyrics()}
         <div class="vibe-actions"><button class="btn" type="button" id="vibe-again" ${disabled}>Analyze Again</button><button class="btn primary" type="button" id="vibe-use" ${disabled}>Use in Create</button></div><p class="hint">Creative direction inspired by your images. Edit it freely to match your intent.</p></section>` : ""}`;
     bindPage();
+  }
+
+  function renderLyrics() {
+    const lyrics = window.Lyrics;
+    if (!lyrics?.configured()) return `<div class="vibe-lyrics"><p class="lx-kicker">Lyrics</p><p class="hint">Set up a lyrics writer in <a href="#/settings">Settings</a> to get lyrics that match your images.</p></div>`;
+    const moods = lyrics.moods();
+    return `<div class="vibe-lyrics"><p class="lx-kicker">Lyrics</p>
+      <div class="vibe-mood-row"><label for="vibe-mood">Theme and mood</label>
+        <select id="vibe-mood" ${lyricsBusy ? "disabled" : ""}>${moods.map((m) => `<option value="${esc(m.id)}" ${m.id === mood ? "selected" : ""}>${esc(m.label)}${m.id === result?.mood ? " · suggested" : ""}</option>`).join("")}<option value="custom" ${mood === "custom" ? "selected" : ""}>Custom…</option></select>
+        <input id="vibe-mood-custom" maxlength="500" placeholder="Describe your own theme, then press Enter" value="${esc(customMood)}" ${mood === "custom" ? "" : "hidden"} ${lyricsBusy ? "disabled" : ""}></div>
+      <label for="vibe-lyrics">Edit the lyrics before using them</label><textarea id="vibe-lyrics" rows="12" maxlength="4000" placeholder="${lyricsBusy ? "Writing lyrics…" : "Lyrics appear here."}">${esc(lyricsText)}</textarea>
+      <p id="vibe-lyrics-error" class="error" role="alert">${esc(lyricsError)}</p>
+      <div class="vibe-actions"><button class="btn" type="button" id="vibe-lyrics-again" ${lyricsBusy || busy ? "disabled" : ""}>${lyricsText ? "Regenerate lyrics" : "Write lyrics"}</button>${lyricsBusy ? '<span class="vibe-wait" role="status" aria-live="polite"><i class="vibe-spinner"></i>Writing lyrics…</span>' : ""}</div></div>`;
+  }
+
+  async function writeLyrics() {
+    if (!result || !window.Lyrics?.configured()) return;
+    if (mood === "custom" && !customMood.trim()) { lyricsError = "Describe your theme first."; render(); $("vibe-mood-custom")?.focus(); return; }
+    const token = ++lyricsToken;
+    lyricsBusy = true; lyricsError = ""; render();
+    try {
+      const images = window.Lyrics.status()?.supports_images
+        ? await Promise.all(files.map((file) => downscale(file, 1024, .85))) : [];
+      const data = await window.Lyrics.generate({ style: result.style, visual: result.visual || "",
+        mood: mood === "custom" ? "" : mood, custom: mood === "custom" ? customMood.trim() : "", images });
+      if (token === lyricsToken) lyricsText = data.lyrics;
+    } catch (error) { if (token === lyricsToken) lyricsError = error.message; }
+    finally { if (token === lyricsToken) { lyricsBusy = false; if (current()) render(); } }
+  }
+
+  async function downscale(file, size, quality) {
+    const bitmap = await createImageBitmap(file);
+    try {
+      const scale = Math.min(1, size / Math.max(bitmap.width, bitmap.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(bitmap.width * scale)); canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+      const context = canvas.getContext("2d"); context.fillStyle = "#0b0a0d"; context.fillRect(0, 0, canvas.width, canvas.height); context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      return canvas.toDataURL("image/jpeg", quality);
+    } finally { bitmap.close(); }
   }
 
   function updateFiles(next) {
     previewUrls.forEach(url => URL.revokeObjectURL(url));
     files = next; previewUrls = files.map(file => URL.createObjectURL(file));
-    result = null; analysisError = ""; render();
+    result = null; analysisError = ""; lyricsToken++; lyricsText = ""; lyricsError = ""; lyricsBusy = false; moodTouched = false; render();
   }
 
   function selectFiles(candidates, replace = false) {
@@ -94,27 +135,38 @@ const Vibe = (() => {
     $("vibe-again")?.addEventListener("click", analyze);
     if ($("vibe-style")) $("vibe-style").oninput = event => { result.style = event.target.value; };
     if ($("vibe-use-advanced")) $("vibe-use-advanced").onchange = event => { useAdvanced = event.target.checked; };
+    if ($("vibe-lyrics")) $("vibe-lyrics").oninput = event => { lyricsText = event.target.value; };
+    if ($("vibe-mood")) $("vibe-mood").onchange = event => {
+      mood = event.target.value; moodTouched = true;
+      if (mood === "custom") { lyricsError = ""; render(); $("vibe-mood-custom").focus(); } else writeLyrics();
+    };
+    if ($("vibe-mood-custom")) {
+      $("vibe-mood-custom").oninput = event => { customMood = event.target.value; };
+      $("vibe-mood-custom").onkeydown = event => { if (event.key === "Enter") { event.preventDefault(); writeLyrics(); } };
+    }
+    $("vibe-lyrics-again")?.addEventListener("click", writeLyrics);
     $("vibe-use")?.addEventListener("click", () => {
       const style = $("vibe-style").value.trim();
       if (!style) { $("vibe-style").focus(); return; }
-      const lyrics = $("lyrics");
-      if (!lyrics.value.trim()) {
-        lyrics.value = DEFAULT_LYRICS;
+      const lyrics = $("lyrics"), written = lyricsText.trim();
+      if (written || !lyrics.value.trim()) {
+        lyrics.value = written || DEFAULT_LYRICS;
         lyrics.dispatchEvent(new Event("input", { bubbles: true }));
         lyrics.dispatchEvent(new Event("change", { bubbles: true }));
       }
       const field = document.getElementById("style"); field.value = style;
       field.dispatchEvent(new Event("input", { bubbles: true })); field.dispatchEvent(new Event("change", { bubbles: true }));
       let advancedLabel = "";
+      const applied = {};
       if (useAdvanced && result.advanced && resultProfileKey === Settings.profileKey()) {
         for (const [key, value] of Object.entries(result.advanced.options)) {
           const slider = SLIDERS.find(s => s.id === key), el = slider && $(key);
-          if (el && Settings.capability().options?.includes(key) && Number.isFinite(value) && value >= Number(el.min) && value <= Number(el.max)) { el.value = value; el.oninput(); }
+          if (el && Settings.capability().options?.includes(key) && Number.isFinite(value) && value >= Number(el.min) && value <= Number(el.max)) { el.value = value; el.oninput(); applied[key] = Number(el.value); }
         }
         advancedLabel = `${result.advanced.label} applied. You can edit Advanced.`;
       } else if (useAdvanced && result.advanced) advancedLabel = "Music model changed. Analyze again to refresh the Advanced suggestions.";
       clearCreateReference();
-      createReference = { files: [...files], entry_id: result.entry_id, entry_ids: result.entry_ids || [result.entry_id], advancedLabel };
+      createReference = { files: [...files], entry_id: result.entry_id, entry_ids: result.entry_ids || [result.entry_id], advancedLabel, applied };
       createPreviewUrls = files.map(file => URL.createObjectURL(file));
       renderCreateReference();
       location.hash = "#/";
@@ -142,14 +194,8 @@ const Vibe = (() => {
     if (!selected) return {};
     const images = [];
     for (let i = 0; i < selected.files.length; i++) {
-      const bitmap = await createImageBitmap(selected.files[i]);
-      try {
-        const scale = Math.min(1, 2048 / Math.max(bitmap.width, bitmap.height));
-        const canvas = document.createElement("canvas");
-        canvas.width = Math.max(1, Math.round(bitmap.width * scale)); canvas.height = Math.max(1, Math.round(bitmap.height * scale));
-        const context = canvas.getContext("2d"); context.fillStyle = "#0b0a0d"; context.fillRect(0, 0, canvas.width, canvas.height); context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-        images.push({ image: canvas.toDataURL("image/jpeg", .9).split(",")[1], entry_id: selected.entry_ids[i] || selected.entry_id });
-      } finally { bitmap.close(); }
+      const image = (await downscale(selected.files[i], 2048, .9)).split(",")[1];
+      images.push({ image, entry_id: selected.entry_ids[i] || selected.entry_id });
     }
     return { vibe_images: images, vibe_entry_id: selected.entry_id };
   }
@@ -162,8 +208,11 @@ const Vibe = (() => {
     try {
       result = await request("/api/vibe/analyze", { method: "POST", body });
       resultProfileKey = modelKey; useAdvanced = true;
+      if (!moodTouched) { mood = result.mood || "dreamy"; customMood = ""; }
+      lyricsToken++; lyricsText = ""; lyricsError = ""; lyricsBusy = false;
     } catch (error) { analysisError = error.message; }
     finally { busy = false; render(); }
+    if (result && !analysisError) writeLyrics();
   }
 
   function renderSettings() {
@@ -209,13 +258,24 @@ const Vibe = (() => {
     window.addEventListener("hashchange", route);
     window.addEventListener("popstate", route);
     refreshStatus();
+    window.Lyrics?.onChange(() => { if (current() && result) render(); });
     pollTimer = setInterval(() => {
       if (current() || location.hash === "#/settings") refreshStatus();
     }, 1800);
     route();
   }
 
-  return { setup, route, generationReference, clearCreateReference, installed: () => Boolean(status?.installed) };
+  // A Vibe handoff is used by one Create request: afterwards the images detach and the
+  // Advanced values Vibe applied (unless the user changed them) return to defaults.
+  function consumeCreateReference() {
+    for (const [key, value] of Object.entries(createReference?.applied || {})) {
+      const slider = SLIDERS.find(s => s.id === key);
+      if (slider && state.adv[key] === value) resetSlider(slider);
+    }
+    clearCreateReference();
+  }
+
+  return { setup, route, generationReference, clearCreateReference, consumeCreateReference, installed: () => Boolean(status?.installed) };
 })();
 window.Vibe = Vibe;
 Vibe.setup();

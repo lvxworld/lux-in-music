@@ -112,13 +112,56 @@ mapping is a Lux heuristic, not an upstream quality recommendation. The Vibe UI
 shows the values, allows opt-out, applies only controls declared by the active
 adapter, and skips suggestions if the music profile changed after analysis.
 No generation profile is activated or changed by Vibe analysis.
-Vibe transfer preserves existing lyrics. If the field is blank, it uses the
-same starter lyrics as a fresh Create form without changing instrumental mode.
+Vibe transfer preserves existing lyrics unless the lyrics writer produced lyrics
+on the Vibe page; those replace the Create lyrics. If neither applies and the
+field is blank, it uses the same starter lyrics as a fresh Create form without
+changing instrumental mode.
+The handoff is used by one Create request. Once that request is queued, the
+Vibe images detach from Create, and Advanced values Vibe applied return to their
+defaults unless the user changed them. Later songs need a new Vibe handoff.
 
 The model's files are about 1.53 GB even though the audio encoder is disabled at
 runtime. This setting avoids loading the audio encoder; it does not shrink the
 downloaded checkpoint. Once software and model installation are complete,
 inference needs no network access.
+
+## Optional lyrics writer (OpenAI-compatible)
+
+`studio/lyrics.py` writes lyrics through any OpenAI-compatible chat completions
+endpoint (a local LM Studio, Ollama, mlx-lm or vLLM server, or a hosted API).
+It is a separate boundary from music providers and adapters: it never changes
+the active music profile, and a song records only the lyrics it was created
+with, not the concept, mood or endpoint used to write them.
+
+- Settings has its own card. Base URL, model, optional API key, temperature
+  and an "images" flag are saved in `.lux/lyrics.json` (mode 0600), not in the
+  model `settings.json`. The status API reports only whether a key is set.
+  `LUX_LYRICS_API_KEY` overrides the saved key. The saved key belongs to its
+  server: changing the base URL to another host clears it unless a new key is
+  entered, and model listing for an unsaved URL never sends the saved key.
+- A fresh install is not configured and makes no lyrics requests. Nothing is
+  sent until the user clicks Write, Regenerate, changes the Vibe mood, or
+  analyzes Vibe images with a configured writer.
+- Before writing from a concept, Create asks the same endpoint to write the
+  whole Style of music prompt from the request, in the template order
+  (language, genre, BPM, instruments, vocal, mood, arrangement, mix). The chip
+  terms are offered as preferred vocabulary. The reply is cleaned to one line
+  of unique comma-separated tags (vocal tags removed for instrumental songs)
+  and capped at 600 characters. The lyrics are then written for that style.
+  A failed style step keeps the current style and still writes the lyrics.
+  Undo restores both the previous lyrics and style.
+- Create sends the concept, style and title. Vibe sends the matched catalog
+  scene and style plus a mood or custom theme. Images are sent, downscaled to
+  1024 px JPEG, only when Settings says the model reads images.
+- Each Vibe catalog entry has a `mood` from the shared mood list. Analysis
+  returns the primary entry's mood as the default choice and its visual
+  description for text-only models.
+- Replies are cleaned: reasoning blocks, fences, preamble and performance notes
+  are removed, tags are limited to Intro/Verse/Pre-Chorus/Chorus/Bridge/Outro,
+  and the text is capped at 3000 characters. A reply with no tagged lyrics is an
+  error, not silently used. Concepts and lyrics are never logged.
+- Adding a mood to the catalog changes the catalog file, so the cached catalog
+  embeddings are rebuilt once on the next analysis.
 
 ## Startup and Settings flow
 

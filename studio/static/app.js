@@ -354,7 +354,7 @@ function setSegmented(id, v) { for (const x of $(id).children) x.classList.toggl
 function paintRange(el) { el.style.setProperty("--p", `${((el.value - el.min) / (el.max - el.min)) * 100}%`); }
 function updateLyricsCount() {
   const instrumental = $("instrumental").checked;
-  $("lyrics").hidden = $("section-tags").hidden = $("lyrics-count").hidden = instrumental;
+  $("lyrics").hidden = $("section-tags").hidden = $("lyrics-count").hidden = $("lyrics-writer").hidden = instrumental;
   if (instrumental) { $("lyrics-advice").textContent = "No vocals: the lyrics are not used and the planned score's vocal line is muted. Describe instruments in the style and leave out vocal tags."; return; }
   const v = $("lyrics").value, lines = v.split("\n").filter((l) => l.trim() && !/^\[.*\]$/.test(l.trim())).length;
   $("lyrics-count").textContent = `${lines} lines · ${v.length} chars`;
@@ -383,9 +383,13 @@ function syncChips() {
   }
   $("template-status").textContent = "";
 }
+function resetSlider(s) {
+  delete state.adv[s.id];
+  const el = $(s.id); el.value = s.def ?? s.min; paintRange(el); const v = $(`${s.id}-v`); v.textContent = s.defLabel || s.def; v.classList.add("default");
+}
 function resetAdvanced() {
   state.adv = {};
-  for (const s of SLIDERS) { const el = $(s.id); el.value = s.def ?? s.min; paintRange(el); const v = $(`${s.id}-v`); v.textContent = s.defLabel || s.def; v.classList.add("default"); }
+  for (const s of SLIDERS) resetSlider(s);
   $("abc").value = "";
 }
 function updateGoLabel() { $("go-label").textContent = state.variations > 1 ? `Create ${state.variations} variations` : "Create"; }
@@ -414,7 +418,7 @@ async function submit(e) {
     if (!r.ok) {
       const d = (await r.json()).detail;
       $("form-error").textContent = Array.isArray(d) ? d.map((x) => `${x.loc.slice(1).join(".") || "request"}: ${x.msg}`).join("\n") : String(d);
-    }
+    } else if (vibeReference.vibe_images) window.Vibe?.consumeCreateReference();
   } catch (error) { $("form-error").textContent = "The studio could not be reached. Check that it is running and try again."; }
   finally { state.submitting = false; }
   pollJobs();

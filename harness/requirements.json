@@ -58,7 +58,8 @@
       "status": "implemented",
       "tests": [
         "tests.test_models.ProviderBoundaryTests",
-        "tests.test_vibe"
+        "tests.test_vibe",
+        "tests.test_lyrics"
       ],
       "acceptance": [
         "YuE2-specific request mapping belongs in its adapter.",
@@ -67,7 +68,9 @@
         "Generation and separation setup are independent.",
         "Vibe image bytes stay outside music-model inputs and public queue payloads; completed variations own separate cover and gallery artifacts.",
         "Vibe accepts at most five images, blends real normalized embeddings against at least 120 curated directions, and filters Advanced suggestions through adapter capabilities.",
-        "Every image-guided YuE2 preset suggests 8 rendering steps while temperature, top-p and top-k can vary."
+        "Every image-guided YuE2 preset suggests 8 rendering steps while temperature, top-p and top-k can vary.",
+        "The optional lyrics writer is independent of music providers: it is unconfigured and makes no requests on a fresh install, never returns its saved API key, and sends Vibe images only when Settings says the model reads images.",
+        "Every Vibe direction suggests a known lyrics mood; lyric replies keep only the shared section tags and fail clearly without them."
       ]
     },
     {

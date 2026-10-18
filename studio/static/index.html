@@ -41,6 +41,7 @@
     <p id="settings-message" role="status" aria-live="polite">Checking model setup…</p>
     <div class="model-cards">
       <div id="vibe-settings" class="model-card-group"></div>
+      <div id="lyrics-settings" class="model-card-group"></div>
       <div id="model-cards" class="model-card-group"></div>
     </div>
   </section>
@@ -57,6 +58,12 @@
       </details>
       <div class="field">
         <input id="title" class="title-input" placeholder="Untitled song" maxlength="80">
+      </div>
+
+      <div class="field lyrics-writer" id="lyrics-writer">
+        <div class="label-row"><label for="concept">Song concept <span class="meta">(optional)</span></label><a class="link" href="#/settings" id="lyrics-setup-link" hidden>Set up a lyrics writer</a></div>
+        <textarea id="concept" rows="2" maxlength="2000" spellcheck="true" placeholder="What is the song about? Lux can write lyrics from it."></textarea>
+        <div class="lyrics-writer-actions"><button type="button" class="btn" id="lyrics-write" disabled>Write style and lyrics</button><button type="button" class="link" id="lyrics-undo" hidden>Undo</button><span class="meta" id="lyrics-write-status" role="status" aria-live="polite"></span></div>
       </div>
 
       <div class="field">
@@ -191,6 +198,7 @@ The last light fades, the night grows calm</textarea>
 </footer>
 <audio id="audio" preload="auto"></audio>
 <script src="/static/settings.js"></script>
+<script src="/static/lyrics.js"></script>
 <script src="/static/app.js"></script>
 <script src="/static/vibe-effects.js"></script>
 <script src="/static/lux.js"></script>

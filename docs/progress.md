@@ -1,5 +1,35 @@
 # Project handoff
 
+## Lyrics writer through an OpenAI-compatible endpoint
+
+Branch: `feat/lyrics-writer` (from `feat/lux-vibe-v0-1`).
+
+- Settings has a new optional "Lyrics writer" card with base URL, model,
+  API key (saved masked in `.lux/lyrics.json`, or `LUX_LYRICS_API_KEY`) and a
+  "model can read images" option. "Save and test" lists the endpoint's models.
+- Create has a "Song concept" field with Write lyrics, Regenerate and Undo. It
+  is hidden with the lyrics when Instrumental is on.
+- "Write style and lyrics" first writes the whole Style of music from the
+  concept (language, genre, BPM, instruments, vocal, mood, arrangement, mix),
+  then writes the lyrics for that style. Regenerate rewrites both; Undo
+  restores both.
+- Settings finds local servers on common ports and lists the endpoint's
+  models in a dropdown. Redirects (for example http to https) are resolved
+  when listing models; a redirected write explains which URL to use.
+- Vibe writes lyrics after analysis. Each catalog direction now carries a
+  mood; the matched mood is preselected and marked "suggested". The user can
+  pick another mood or a custom theme and regenerate. "Use in Create" moves
+  the Vibe lyrics into Create.
+- Verification: baseline and full offline checks pass, with fake
+  OpenAI-compatible transports in `tests/test_lyrics.py`. The Chrome flow
+  covers Settings save/test, Create write/regenerate/undo and Vibe mood,
+  custom theme and transfer with mocked lyrics routes.
+- Limitations: no streaming, no language selector in the UI yet, and no
+  check that the selected model really supports images. Prompt quality has
+  not been measured with a real endpoint yet.
+- Next step: try it with a local LM Studio or Ollama model, text-only and with
+  vision, and tune the system prompt for lyric length against the duration cap.
+
 ## Stronger glow in the Vibe listening effects
 
 Branch: `feat/lux-vibe-v0-1`.

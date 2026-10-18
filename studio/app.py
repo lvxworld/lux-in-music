@@ -31,6 +31,8 @@ from .models import get_manager, SetupRequired
 from .providers import get_provider, close_providers
 from .vibe import get_vibe_manager, validate_image, MAX_IMAGE_BYTES, MAX_VIBE_IMAGES
 from .artwork import prepare_vibe_artwork, attach_vibe_artwork
+from .lyrics import (get_lyrics_writer, validate_image_data_url, LyricsNotConfigured,
+                     LyricsUpstreamError, MAX_LYRICS_IMAGES)
 from starlette.concurrency import run_in_threadpool
 
 log = logging.getLogger("lux_in_music")
@@ -304,6 +306,7 @@ async def vibe_analyze(request: Request):
         raise HTTPException(503, "Local image analysis failed. Check the Vibe model installation in Settings.") from error
     return {"entry_id": result["id"], "style": result["style"],
             "entry_ids": result.get("entry_ids", [result["id"]]), "image_count": len(uploads),
+            "mood": result.get("mood"), "visual": result.get("visual"),
             "advanced": vibe_advanced_options(result),
             "elapsed_s": round(time.monotonic() - started, 2)}
 
@@ -312,6 +315,103 @@ async def vibe_analyze(request: Request):
 def vibe_release():
     get_vibe_manager().release()
     return {"ok": True}
+
+
+@app.get("/api/lyrics/status")
+def lyrics_status():
+    return get_lyrics_writer().status()
+
+
+class LyricsSettings(BaseModel):
+    base_url: str | None = Field(None, max_length=500)
+    model: str | None = Field(None, max_length=200)
+    api_key: str | None = Field(None, max_length=500)  # None keeps the saved key; "" clears it.
+    supports_images: bool | None = None
+    temperature: float | None = None
+
+
+@app.post("/api/lyrics/settings")
+def lyrics_settings(req: LyricsSettings):
+    try:
+        return get_lyrics_writer().save(req.model_dump(exclude_unset=True))
+    except ValueError as error:
+        raise HTTPException(422, str(error)) from error
+
+
+def _lyrics_call(action):
+    try:
+        return action()
+    except LyricsNotConfigured as error:
+        raise HTTPException(409, str(error)) from error
+    except LyricsUpstreamError as error:
+        raise HTTPException(502, str(error)) from error
+
+
+@app.post("/api/lyrics/test")
+def lyrics_test():
+    return _lyrics_call(get_lyrics_writer().test)
+
+
+class LyricsModelsRequest(BaseModel):
+    base_url: str = Field(..., max_length=500)
+    api_key: str | None = Field(None, max_length=500)
+
+
+@app.post("/api/lyrics/models")
+def lyrics_models(req: LyricsModelsRequest):
+    try:
+        return _lyrics_call(lambda: get_lyrics_writer().list_models(req.base_url, req.api_key))
+    except ValueError as error:
+        raise HTTPException(422, str(error)) from error
+
+
+@app.post("/api/lyrics/discover")
+def lyrics_discover():
+    return get_lyrics_writer().discover()
+
+
+class StyleRequest(BaseModel):
+    concept: str = Field(..., min_length=1, max_length=2000)
+    title: str = Field("", max_length=200)
+    instrumental: bool = False
+    vocabulary: list[str] = Field(default_factory=list, max_length=200)
+
+
+@app.post("/api/lyrics/style")
+def lyrics_style(req: StyleRequest):
+    if any(len(term) > 60 for term in req.vocabulary):
+        raise HTTPException(422, "Style terms must be short")
+    concept = req.concept.strip()
+    if not concept:
+        raise HTTPException(422, "Describe a song concept first")
+    return _lyrics_call(lambda: get_lyrics_writer().write_style(
+        concept, req.title.strip(), req.instrumental, req.vocabulary))
+
+
+class LyricsRequest(BaseModel):
+    concept: str = Field("", max_length=2000)
+    style: str = Field("", max_length=4000)
+    title: str = Field("", max_length=200)
+    mood: str = Field("", max_length=40)
+    custom: str = Field("", max_length=500)
+    visual: str = Field("", max_length=2000)
+    language: str = Field("", max_length=60)
+    images: list[str] = Field(default_factory=list)
+
+
+@app.post("/api/lyrics/generate")
+def lyrics_generate(req: LyricsRequest):
+    if len(req.images) > MAX_LYRICS_IMAGES:
+        raise HTTPException(422, "Choose up to 5 images")
+    try:
+        images = [validate_image_data_url(image) for image in req.images]
+    except ValueError as error:
+        raise HTTPException(422, str(error)) from error
+    if not any(value.strip() for value in (req.concept, req.visual, req.custom)) and not images:
+        raise HTTPException(422, "Describe a song concept first")
+    fields = req.model_dump(exclude={"images"})
+    return _lyrics_call(lambda: get_lyrics_writer().generate(**{k: v.strip() for k, v in fields.items()},
+                                                              images=images))
 
 
 class ModelSetup(BaseModel):
