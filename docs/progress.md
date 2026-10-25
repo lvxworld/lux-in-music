@@ -1,13 +1,32 @@
 # Project handoff
 
+## Skill guidance for iterations
+
+At task start and phase changes, read [agent skill guidance](agent-skills.md)
+and suggest the relevant available skill when it would materially help.
+
+### Harness integration
+
+- Added a situation-to-skill guide with Lux examples and guidance for making
+  brief, timely suggestions during development iterations.
+- Linked it from the shared harness and these required startup notes, keeping
+  the existing AGENTS.md and tool-specific instruction bridges unchanged.
+- Verification: `python3 scripts/check.py` passed (15 tests). Local document
+  links and all 16 table entries were checked against the installed plugin
+  manifest; `git diff --check` passed. Suggestion behavior still needs to be
+  observed during the next development session.
+- Next step: use the guide in the next Lux task; confirm the chosen skill is
+  available in that session and follow its invocation policy.
+
 ## PR handoff
 
 - `feat/lux-hook` includes Hook with optional SheetSage2 setup, Studio edit
   directions and take controls, Create/Library layout and help, and PNG branding.
 - Full offline checks passed (183 tests). Focused logo checks passed. The latest
   Hook browser run fails at the expected analysis-message assertion: its mocked
-  response does not include the message. The complete browser run is still being
-  checked; do not treat the full browser suite as passing.
+  response does not include the message. The complete browser run also fails
+  because the Advanced tooltip extends left of the Create panel. These browser
+  checks are not passing and remain review follow-ups.
 - Earlier implementation notes below retain their historical verification
   state. The user has now requested publication and review.
 - Next step: review the UI and run a real Hook transcription, generation and
