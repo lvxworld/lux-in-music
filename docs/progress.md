@@ -1,5 +1,23 @@
 # Project handoff
 
+## Skill guidance for iterations
+
+At task start and phase changes, read [agent skill guidance](agent-skills.md)
+and suggest the relevant available skill when it would materially help.
+
+### Harness integration
+
+- Added a situation-to-skill guide with Lux examples and guidance for making
+  brief, timely suggestions during development iterations.
+- Linked it from the shared harness and these required startup notes, keeping
+  the existing AGENTS.md and tool-specific instruction bridges unchanged.
+- Verification: `python3 scripts/check.py` passed (15 tests). Local document
+  links and all 16 table entries were checked against the installed plugin
+  manifest; `git diff --check` passed. Suggestion behavior still needs to be
+  observed during the next development session.
+- Next step: use the guide in the next Lux task; confirm the chosen skill is
+  available in that session and follow its invocation policy.
+
 ## Stronger glow in the Vibe listening effects
 
 Branch: `feat/lux-vibe-v0-1`.

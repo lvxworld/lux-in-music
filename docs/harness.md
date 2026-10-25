@@ -13,6 +13,7 @@ does not run an autonomous agent or depend on one agent vendor's SDK.
 | `docs/architecture.md` | Product requirements, model boundaries, recorded design direction |
 | `harness/requirements.json` | Acceptance scenarios, implementation status, issue links and test selectors |
 | `docs/progress.md` | Verified state, open limitations, next steps |
+| `docs/agent-skills.md` | Task-based skill suggestions, Lux examples, and optional development flows |
 | `scripts/check.py` | Portable baseline and application verification entry point |
 | `tests/` | Offline harness/application regression checks |
 | `scripts/check_ui.py` | Isolated browser flow using fake providers/downloads |
@@ -30,6 +31,15 @@ Anyone can run the same verification command without an AI tool.
 carry no separate product rules. Keep all actual instructions in AGENTS.md.
 Aider can be configured to read AGENTS.md using its `read` setting; Gemini can
 configure its context filename to AGENTS.md instead of using the bridge.
+
+## Skills during iterations
+
+At task start and phase changes, use [agent skill guidance](agent-skills.md)
+to suggest a relevant Matt Pocock skill when it would help. It covers design,
+diagnosis, implementation, review, and handoff, with examples for Lux In Music.
+The discovery pointer also lives at the top of `docs/progress.md`, which
+AGENTS.md already requires contributors to read when starting a task.
+Skills are optional; contributors and CI can use the harness without the plugin.
 
 ## Commands and what they prove
 
