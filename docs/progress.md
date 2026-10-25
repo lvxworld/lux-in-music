@@ -1,16 +1,37 @@
 # Project handoff
 
-## Blue sidebar logo
+## PR handoff
 
-- Replaced the gold PNG with the supplied blue artwork on a black background,
-  preserving the source file unchanged. This replaces the earlier starry blue
-  version. Updated the CSS framing for its layout and the favicon colors.
-- Reduced the displayed logo by 10%, centered it, and rounded its corners to
-  8 px. The compact sidebar shows the symbol at 36 px wide.
-- Verification: baseline and full offline checks passed (183 tests). A focused
-  Chrome check passed desktop, compact and mobile layouts, exact source-image
-  delivery, no page overflow and no JavaScript errors. Desktop and compact
-  screenshots were inspected under ignored `outputs/checks/blue-brand/`.
+- `feat/lux-hook` includes Hook with optional SheetSage2 setup, Studio edit
+  directions and take controls, Create/Library layout and help, and PNG branding.
+- Full offline checks passed (183 tests). Focused logo checks passed. The latest
+  Hook browser run fails at the expected analysis-message assertion: its mocked
+  response does not include the message. The complete browser run is still being
+  checked; do not treat the full browser suite as passing.
+- Earlier implementation notes below retain their historical verification
+  state. The user has now requested publication and review.
+- Next step: review the UI and run a real Hook transcription, generation and
+  listening check on the reviewer's machine.
+
+## Final PNG sidebar logo
+
+- Preserved the supplied silver PNG unchanged as `lux-logo.png`, used by the
+  favicon. Removed the unused SVG favicon.
+- The sidebar uses `lux-logo-sidebar.png`, an optical variant made with built-in
+  ImageGen: brighter solid strokes, less glow and stronger small lettering.
+  It retains the symbol, lettering, black background and original framing.
+- Reduced the displayed logo by 10%, then another 20%, with 8 px corners.
+  Its width is 72% of the brand area, or 28.8 px in the compact sidebar.
+  On wide layouts its left edge aligns with the menu icons; the compact
+  sidebar keeps the symbol centered.
+- Verification: full offline checks passed (183 tests, including the baseline).
+  Focused Chrome checks passed desktop, compact and mobile layouts, retained
+  dimensions and alignment, source PNG preservation, no page overflow and no
+  JavaScript errors. Original/variant screenshots at 1x and 2x were compared;
+  the variant has clearer strokes at the current size. The tagline remains
+  about 5 CSS px high, so small-text legibility is still limited.
+  Screenshots and the generation prompt are under ignored
+  `outputs/checks/blue-brand/`.
 - The full browser flow was not rerun. Next step: review the new logo in the
   running app. Work continues on `feat/lux-hook`, including the Advanced help,
   layout improvements and brand changes from `feat/advanced-parameter-help`
@@ -21,8 +42,8 @@
 - Added the supplied gold Lux In Music PNG as the sidebar logo. The source
   image is copied unchanged; CSS viewports hide its black margins and show only
   its symbol in the compact sidebar. It loads locally without remote requests.
-- A simplified SVG symbol is used for the browser favicon. The earlier font
-  proposal was replaced by the lettering in the supplied artwork.
+- The initial SVG favicon has since been replaced by the final PNG above.
+  The earlier font proposal was replaced by the supplied artwork's lettering.
 - Removed the Latin sidebar tagline. Moved NEW from Vibe to Hook in both
   navigation menus, including a CSS fix so the mobile badge stays visible.
 - Verification: full offline checks passed (183 tests). A focused Chrome smoke

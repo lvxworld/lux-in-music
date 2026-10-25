@@ -43,15 +43,15 @@ body::after {
 }
 ::selection { background: rgba(240,162,60,.35); }
 
-/* ---- brand: supplied blue artwork, with its original pixels preserved ---- */
+/* ---- brand: supplied silver artwork, with its original pixels preserved ---- */
 .sidebar { background: rgba(10,10,12,.72); }
-.brand { justify-content: center; gap: 0; padding: 0; }
+.brand { justify-content: flex-start; gap: 0; padding: 0; }
 /* CSS viewports frame the artwork; compact mode shows its symbol. */
-.logo { --crop-left: 215; --crop-top: 350; --crop-width: 1070; --crop-height: 385; position: relative; display: block; width: 90%; height: auto; aspect-ratio: var(--crop-width) / var(--crop-height); flex: none; overflow: hidden; border-radius: 8px; background: none; box-shadow: none; }
+.logo { --crop-left: 185; --crop-top: 320; --crop-width: 1090; --crop-height: 410; position: relative; display: block; width: 72%; height: auto; aspect-ratio: var(--crop-width) / var(--crop-height); flex: none; margin-left: 10px; overflow: hidden; border-radius: 8px; background: none; box-shadow: none; }
 .logo img { position: absolute; display: block; width: calc(100% * 1448 / var(--crop-width)); height: auto; max-width: none; left: calc(-100% * var(--crop-left) / var(--crop-width)); top: calc(-100% * var(--crop-top) / var(--crop-height)); mix-blend-mode: screen; }
 @media (min-width: 821px) and (max-width: 1180px) {
   .brand { justify-content: center; }
-  .brand .logo { --crop-width: 385; width: 36px; }
+  .brand .logo { --crop-width: 410; width: 28.8px; margin-left: 0; }
 }
 .license { font-style: italic; }
 nav a.active { background: rgba(240,162,60,.08); box-shadow: inset 2px 0 0 var(--lux); color: var(--text); }
