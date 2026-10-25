@@ -1,5 +1,21 @@
 # Project handoff
 
+## Blue sidebar logo
+
+- Replaced the gold PNG with the supplied blue artwork on a black background,
+  preserving the source file unchanged. This replaces the earlier starry blue
+  version. Updated the CSS framing for its layout and the favicon colors.
+- Reduced the displayed logo by 10%, centered it, and rounded its corners to
+  8 px. The compact sidebar shows the symbol at 36 px wide.
+- Verification: baseline and full offline checks passed (183 tests). A focused
+  Chrome check passed desktop, compact and mobile layouts, exact source-image
+  delivery, no page overflow and no JavaScript errors. Desktop and compact
+  screenshots were inspected under ignored `outputs/checks/blue-brand/`.
+- The full browser flow was not rerun. Next step: review the new logo in the
+  running app. Work continues on `feat/lux-hook`, including the Advanced help,
+  layout improvements and brand changes from `feat/advanced-parameter-help`
+  and `feat/brand-wordmark`.
+
 ## Sidebar brand refresh
 
 - Added the supplied gold Lux In Music PNG as the sidebar logo. The source
