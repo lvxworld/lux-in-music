@@ -62,9 +62,9 @@ def _bars(melody, count, units_per_bar, quarters_per_bar):
     timeline = [None] * total
     previous = 0
     for note in melody.notes:
-        start = max(previous, round(note.start / melody.beats * total))
+        start = min(max(previous, round(note.start / melody.beats * total)), total - 1)
         end = min(total, max(start + 1, round(note.end / melody.beats * total)))
-        if start >= total:
+        if start < previous:
             raise ScoreError("The Hook has too many notes for this phrase. Trim it or use Arrange recording.")
         for i in range(start, end):
             timeline[i] = (start, note.pitch)

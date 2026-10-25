@@ -46,7 +46,7 @@ class CatalogTests(unittest.TestCase):
                 self.assertTrue(license["verified"])
                 self.assertTrue(license["url"].startswith("https://"))
                 self.assertEqual(license["release_revision"], model["revision"])
-            self.assertTrue(any(file["path"].endswith(".safetensors") and (file.get("sha256") or file.get("git_sha1")) for file in model["files"]))
+            self.assertTrue(any(file["path"].endswith(".safetensors") and file["sha256"] for file in model["files"]))
             for file in model["files"]:
                 self.assertIn(f"/resolve/{model['revision']}/", file["url"])
                 self.assertGreater(file["size"], 0)

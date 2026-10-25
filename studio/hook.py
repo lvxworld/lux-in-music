@@ -41,23 +41,6 @@ class HookBusy(RuntimeError):
     pass
 
 
-def _sha256(path):
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for block in iter(lambda: handle.read(8 << 20), b""):
-            digest.update(block)
-    return digest.hexdigest()
-
-
-def verify_models(root=MODEL_ROOT):
-    for component in MANIFEST["components"]:
-        for artifact in component["files"]:
-            path = root / component["directory"] / artifact["path"]
-            if (not path.is_file() or path.is_symlink() or path.stat().st_size != artifact["size"]
-                    or _sha256(path) != artifact["sha256"]):
-                raise HookUnavailable("SheetSage2 files are missing or changed. Use Verify / repair Hook in Settings.")
-
-
 def runtime_ready():
     python = RUNTIME / "bin/python"
     site_dirs = list((RUNTIME / "lib").glob("python*/site-packages"))
@@ -71,7 +54,7 @@ def validate_audio(data: bytes):
         raise ValueError("Choose an audio file no larger than 25 MB.")
     try:
         with sf.SoundFile(io.BytesIO(data)) as source:
-            if source.format not in {"WAV", "WAVEX", "FLAC", "OGG", "AIFF", "MPEG-1/2 Audio"}:
+            if source.format not in {"WAV", "WAVEX", "FLAC", "OGG", "AIFF", "MP3"}:
                 raise ValueError("Use WAV, FLAC, MP3, OGG or AIFF, or record in Hook.")
             rate, channels, duration = source.samplerate, source.channels, source.frames / source.samplerate
             if not 8000 <= rate <= 192000 or not 1 <= channels <= 2:
@@ -188,21 +171,28 @@ class HookManager:
             from .adapters.yue2_hook import HookMelody
             selected_bpm = bpm or int(response["bpm"])
             abc = response["abc"]
-            if selected_bpm != int(response["bpm"]):
-                from .yue2_score import retime
-                abc, _ = retime(abc, selected_bpm)
             notes = response["notes"]
+            if not notes:
+                raise ValueError("No melody was detected. Try a clearer or louder recording, or select another part.")
+            if len(notes) > 512:
+                raise ValueError("The melody has too many notes. Select a shorter part of the recording.")
+            if selected_bpm != int(response["bpm"]):
+                # The score rhythm was quantised at the detected tempo; the notes below follow the chosen one.
+                abc = None
             # Model note times are seconds. Keep onset/duration while mapping them to the selected musical grid.
             origin = notes[0]["start_s"]
             last = notes[-1]["end_s"]
             beats = max(.25, (last - origin) * selected_bpm / 60)
-            melody = HookMelody(version=1, bpm=selected_bpm, beats=beats, source="recording",
-                                model_id="sheetsage2", model_revision=MODEL_REVISION,
-                                score_abc=abc,
-                                notes=[{"pitch": int(n["pitch"]),
-                                        "start": (n["start_s"] - origin) * selected_bpm / 60,
-                                        "end": (n["end_s"] - origin) * selected_bpm / 60}
-                                       for n in notes])
+            try:
+                melody = HookMelody(version=1, bpm=selected_bpm, beats=beats, source="recording",
+                                    model_id="sheetsage2", model_revision=MODEL_REVISION,
+                                    score_abc=abc,
+                                    notes=[{"pitch": int(n["pitch"]),
+                                            "start": (n["start_s"] - origin) * selected_bpm / 60,
+                                            "end": (n["end_s"] - origin) * selected_bpm / 60}
+                                           for n in notes])
+            except ValueError as error:
+                raise ValueError("The detected melody could not be used. Try a clearer single-voice part.") from error
             return {"melody": melody.model_dump(), "abc": abc, "notes": notes,
                     "warnings": [], "bpm": selected_bpm, "tempo_estimated": not bool(bpm),
                     "duration_s": round(end_s - start_s, 2), "model_id": "sheetsage2",

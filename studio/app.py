@@ -154,6 +154,7 @@ def _worker() -> None:
             job["finished"] = time.time()
             job.pop("_prepared", None)
             job.pop("_vibe_artwork", None)
+            job.pop("_hook_reference", None)
             with _jobs_lock:
                 _cancels.pop(job_id, None)
 
@@ -332,7 +333,8 @@ def hook_status():
 def hook_install(req: VibeInstallRequest):
     if (get_vibe_manager().job or {}).get("status") in {"queued", "running"}:
         raise HTTPException(409, "Wait for Vibe setup to finish before preparing Hook.")
-    if _busy():
+    if _busy() and (get_hook_manager().job or {}).get("status") not in {"queued", "running"}:
+        # A running Hook setup is idempotent: start_install returns that job.
         raise HTTPException(409, "Wait for current music jobs and model setup to finish before preparing Hook.")
     try:
         return get_hook_manager().start_install(req.license_review_id, req.accept_license)
@@ -445,7 +447,7 @@ def api_generate(req: GenerateRequest):
         adapter = get_provider(profile).adapter(profile)
         if params.instrumental and not adapter.capabilities.get("instrumental"):
             raise ValueError("The selected model cannot generate instrumental music")
-        if params.model_options.get("hook_melody") and not adapter.capabilities.get("hook"):
+        if (params.model_options.get("hook_melody") or getattr(params, "hook_melody", None)) and not adapter.capabilities.get("hook"):
             raise ValueError("The selected music model does not support Hook melodies. Remove the Hook reference or select a compatible model.")
         params = adapter.normalize(params)
         hook_reference = prepare_hook_reference(getattr(req, "hook_reference_audio", None),
@@ -490,6 +492,7 @@ def api_cancel_job(job_id: str):
         if job["status"] == "queued":
             job.update(status="cancelled", finished=time.time())
             job.pop("_vibe_artwork", None)
+            job.pop("_hook_reference", None)
         elif job["status"] == "running" and job["kind"] == "generate" and job_id in _cancels:
             # ponytail: generation only; separation/stem edits run several steps that do not check cancel yet.
             _cancels[job_id].set()
