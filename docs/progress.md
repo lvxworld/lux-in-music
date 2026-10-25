@@ -27,6 +27,9 @@ and suggest the relevant available skill when it would materially help.
   response does not include the message. The complete browser run also fails
   because the Advanced tooltip extends left of the Create panel. These browser
   checks are not passing and remain review follow-ups.
+- CI exposed a local-settings dependency in the section-edit direction test:
+  its empty profile fell back to the developer's configured model. It now uses
+  a nonempty fake profile and rejects any access to local model settings.
 - Earlier implementation notes below retain their historical verification
   state. The user has now requested publication and review.
 - Next step: review the UI and run a real Hook transcription, generation and

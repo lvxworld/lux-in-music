@@ -33,13 +33,14 @@ class EditDirectionTests(unittest.TestCase):
                                        "payload": base64.b64encode(json.dumps(list(range(200))).encode()).decode()}]}
             audio = {"audio": base64.b64encode(b"synthetic pcm").decode()}
             with patch.object(yue2_edit.engine, "OUTPUT_DIR", output), \
+                 patch.object(yue2_edit, "get_manager", side_effect=AssertionError("No local model settings")), \
                  patch.object(yue2_edit, "song_tokens", return_value=[0] * 100), \
                  patch.object(yue2_edit, "_base_options", return_value={"style": "Indie pop"}), \
                  patch.object(yue2_edit, "_pcm", return_value=np.zeros((2000, 2), dtype=np.float32)), \
                  patch.object(yue2_edit, "crossfade_region", side_effect=lambda original, new, *_: new), \
                  patch.object(yue2_edit, "_run", side_effect=[semantic, audio]) as run:
                 _, info = yue2_edit.render_section(
-                    song, 1, 2, 99, profile={}, direction="Make this part more energetic")
+                    song, 1, 2, 99, profile={"id": "synthetic-profile"}, direction="Make this part more energetic")
 
         self.assertEqual(info["direction"], "Make this part more energetic")
         self.assertIn("For the selected section only: Make this part more energetic",
