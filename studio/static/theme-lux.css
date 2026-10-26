@@ -1,7 +1,7 @@
 /* ============================================================
    LUX IN MUSIC: theme after "Lux In Tenebris" (luxintenebris.news)
    A dark broadsheet; amber lamplight is the only light.
-   Watercolour on aged parchment for imagery. Fonts stay Inter.
+   Watercolour on aged parchment for imagery. Inter for interface text.
    ============================================================ */
 :root {
   --bg: #0e0e10;                       /* ink */
@@ -43,15 +43,24 @@ body::after {
 }
 ::selection { background: rgba(240,162,60,.35); }
 
-/* ---- brand: candle in the dark ---- */
+/* ---- brand: supplied silver artwork, with its original pixels preserved ---- */
 .sidebar { background: rgba(10,10,12,.72); }
-.logo { background: radial-gradient(circle at 50% 70%, #3a2614 0%, #17110b 70%); box-shadow: 0 0 0 1px #3a3a42, 0 6px 26px -6px rgba(240,162,60,.55); }
-.logo svg { width: 22px; height: 22px; stroke: none; }
-.brand-name { font-weight: 800; letter-spacing: .01em; }
-.brand-name .lux-word { color: var(--lux); }
-.brand-sub { font-style: italic; color: var(--lux-soft); letter-spacing: .02em; }
+.brand { justify-content: flex-start; gap: 0; padding: 0; }
+/* CSS viewports frame the artwork; compact mode shows its symbol. */
+.logo { --crop-left: 185; --crop-top: 320; --crop-width: 1090; --crop-height: 410; position: relative; display: block; width: 72%; height: auto; aspect-ratio: var(--crop-width) / var(--crop-height); flex: none; margin-left: 10px; overflow: hidden; border-radius: 8px; background: none; box-shadow: none; }
+.logo img { position: absolute; display: block; width: calc(100% * 1448 / var(--crop-width)); height: auto; max-width: none; left: calc(-100% * var(--crop-left) / var(--crop-width)); top: calc(-100% * var(--crop-top) / var(--crop-height)); mix-blend-mode: screen; }
+@media (min-width: 821px) and (max-width: 1180px) {
+  .brand { justify-content: center; }
+  .brand .logo { --crop-width: 410; width: 28.8px; margin-left: 0; }
+}
 .license { font-style: italic; }
 nav a.active { background: rgba(240,162,60,.08); box-shadow: inset 2px 0 0 var(--lux); color: var(--text); }
+.sidebar #nav-vibe { color: #d8c5f2; }
+.sidebar #nav-vibe:hover { background: rgba(165,133,208,.14); }
+.sidebar #nav-vibe.active { background: rgba(165,133,208,.14); box-shadow: inset 2px 0 0 #d8c5f2; color: #d8c5f2; }
+.sidebar #nav-hook { color: #a9d8cf; }
+.sidebar #nav-hook:hover { background: rgba(105,172,160,.13); }
+.sidebar #nav-hook.active { background: rgba(105,172,160,.13); box-shadow: inset 2px 0 0 #a9d8cf; color: #a9d8cf; }
 .new-badge { background: transparent; color: var(--ember); border: 1px solid rgba(255,107,53,.5); border-radius: 3px; }
 .engine.ok .dot { background: var(--lux); box-shadow: 0 0 0 3px rgba(240,162,60,.18), 0 0 10px rgba(240,162,60,.6); }
 

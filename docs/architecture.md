@@ -20,6 +20,19 @@ Shared song inputs, queue, results and library use provider/profile contracts.
 WAV rates. `studio/providers.py` owns audio.cpp transport, process lifecycle and
 runtime probes. Generation and separation have separate lazy runtime slots.
 
+Create's YuE2 Advanced controls include short hover and keyboard-focus help. The
+descriptions follow the [audio.cpp YuE2 reference](https://github.com/0xShug0/audio.cpp/blob/main/docs/models/yue2.md):
+semantic-token sampling controls, route-specific automatic guidance defaults,
+and the eight-step default for NAR audio rendering. The help explains practical
+tradeoffs without promising that a setting will improve a particular song.
+
+Studio Mode section edits accept an optional, bounded text direction separate
+from lyrics. The YuE2 edit adapter adds it to a temporary style prompt while it
+samples the selected semantic section; the edit pipeline still separates and
+replaces only the chosen stem in the selected time range. The direction is saved
+with the resulting take. YuE2 has no dedicated section-scoped instruction input,
+so this is a creative cue, not a guarantee of exact compliance.
+
 Genre templates belong to the shared Create UI: they load the shared Melodic
 Techno demo lyrics with a genre style, preserve title/settings, and make no
 inference request. The lyric text has one source in the existing demo.
@@ -119,6 +132,44 @@ The model's files are about 1.53 GB even though the audio encoder is disabled at
 runtime. This setting avoids loading the audio encoder; it does not shrink the
 downloaded checkpoint. Once software and model installation are complete,
 inference needs no network access.
+
+## Local recorded melodies (LUX HOOK)
+
+Hook is a separate `#/hook` page between Vibe and Studio Mode. It records mono
+PCM through an AudioWorklet or accepts one browser-decodable audio file. The
+browser converts the recording to a metadata-free WAV before sending it to
+`POST /api/hook/analyze`; the server validates the actual content, byte size,
+channels, sample rate, finite samples, length and selected range before analysis.
+The limits are 25 MiB and 2–90 seconds. Leaving Hook stops microphone tracks.
+Original recordings remain in memory, outside songs, queue payloads and logs.
+Hook's Audio input settings lists browser-visible audio inputs, persists the
+chosen device ID in localStorage and requests it with an exact media constraint.
+Device discovery does not request permission automatically; Refresh audio inputs
+does so explicitly and closes the temporary stream. Disconnected inputs require
+reselection instead of silently switching microphones. Capture stops on track
+termination or leaving Hook. Inputs belong to the browser's device, including
+when a user opens a Lux server running on another computer.
+
+`studio/hook.py` owns explicit SheetSage2 and MERT setup, file verification, and offline transcription. These weights are pinned in `config/hook-sheet-model.json`, separate from audio.cpp generation profiles; both use CC BY-NC 4.0. Settings requires review and explicit acceptance before downloads. Setup installs a hash-locked Python 3.11 runtime under ignored `.lux/experiments/`; normal bootstrap and startup install neither Hook software nor weights. Analysis uses the local artifacts only, with FP32 on Apple Metal when available and CPU fallback. No inference request downloads files or contacts a remote service.
+
+The server validates the uploaded audio, analyzes only the selected range, and invokes a short-lived isolated process. That process and its temporary files are removed after analysis, releasing model memory. The UI previews the melody and tempo from SheetSage2's melody-only score. In Develop mode, bounded note events guide the planner's chorus; Arrange mode uses the model's full melody-only ABC score and its approximate timing. The YuE2 adapter validates the score and retains its existing duration and ending checks. Instrumental generation keeps the extracted melody in the score. This is score conditioning, not waveform editing or voice cloning.
+
+The Hook reference is an adapter option gated by the `hook` capability, captured with queued inputs and retained in song parameters. Library/details identify the recorded-melody origin. Use in Create preserves title, lyrics, style, seed, Advanced values and Vibe artwork; it selects Melody planning. It refuses to silently replace a custom ABC. No music generation occurs during analysis. Hook inference is serialized and runs off the FastAPI event loop; model setup and music jobs must finish first.
+
+SheetSage2 can recover several musical parts, but Hook intentionally transfers its melody-only score. A transcription is a musical suggestion: instrument identity, exact notes and the final arrangement are not guaranteed. The noncommercial model terms apply to users of these weights; Settings links to both upstream licenses before download.
+
+The Hook reference is an adapter option, gated by the `hook` capability, captured
+with queued inputs and retained in song parameters. Library/details identify the
+recorded-melody origin. Use in Create preserves title, lyrics, style, seed,
+Advanced values and Vibe artwork; it selects Melody planning. It refuses to
+silently replace a custom ABC. No music generation occurs during analysis.
+Hook inference is serialized and runs in a worker thread. Music jobs/setup must
+finish first; new music generation, model setup and launcher restarts are held
+while analysis runs. The small pitch session can be released on navigation.
+
+Automated checks use synthetic PCM and fake provider outputs, including a
+synthetic browser microphone. Real transcription, motif adherence and final song
+quality still require audio/listening acceptance.
 
 ## Startup and Settings flow
 

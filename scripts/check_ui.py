@@ -79,10 +79,194 @@ def check_reactive_effects(page, expect, artifacts):
     page.wait_for_function("parseFloat(getComputedStyle($('vibe-effects')).opacity) > .4")
 
 
+def check_hook(browser, url, artifacts, expect):
+    """Real upload/PCM recording and routing, with fake model responses."""
+    context = browser.new_context(permissions=["microphone"], viewport={"width": 1440, "height": 1000})
+    context.add_init_script("""window.__hookInputs = [{kind:'audioinput',deviceId:'built-in',label:'Synthetic built-in microphone'},
+        {kind:'audioinput',deviceId:'usb-interface',label:'Synthetic USB guitar interface'}];
+        navigator.mediaDevices.enumerateDevices = async () => window.__hookInputs;
+        const realGetUserMedia = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+        navigator.mediaDevices.getUserMedia = async constraints => {
+            window.__hookInputConstraint = constraints.audio?.deviceId?.exact || '';
+            const audio = typeof constraints.audio === 'object' ? {...constraints.audio} : true;
+            if (typeof audio === 'object') delete audio.deviceId;
+            return realGetUserMedia({...constraints,audio});
+        };""")
+    page = context.new_page(); errors = []; page.on("pageerror", lambda error: errors.append(str(error)))
+    page.route("https://**/*", lambda route: route.abort())
+    installed = False
+    def status(route):
+        data = route.fetch().json()
+        data.update(installed=installed, files_verified=installed, runtime_ready=installed, license_accepted=installed, job=None)
+        route.fulfill(json=data)
+    page.route("**/api/hook/status", status)
+    def install(route):
+        nonlocal installed
+        assert route.request.post_data_json["accept_license"]
+        installed = True
+        route.fulfill(json={"status": "done"})
+    page.route("**/api/hook/install", install)
+    def capabilities(route):
+        data = route.fetch().json()
+        if data["active"]:
+            data["active"]["capabilities"].update(hook=True, abc=True, planning=["off", "melody", "full"], duration_analysis=True)
+        route.fulfill(json=data)
+    page.route("**/api/settings/status", capabilities)
+    reference = {"version": 1, "bpm": 120, "source": "solo", "octave_shift": 0, "beats": 8,
+        "notes": [{"pitch": 60 + i % 3 * 2, "start": i, "end": i + .8} for i in range(8)], "mode": "develop", "target": "vocal"}
+    analyses = []
+    def analyze(route):
+        analyses.append(route.request)
+        assert route.request.post_data_buffer[:4] == b"RIFF"
+        route.fulfill(json={"melody": reference, "bpm": 120, "tempo_estimated": False, "duration_s": 4,
+                            "warnings": ["The detector may be switching between instruments. Listen to the preview."]})
+    page.route("**/api/hook/analyze?*", analyze)
+    generated = []
+    def generate(route):
+        generated.append(route.request.post_data_json)
+        route.fulfill(json={"id": "hook-test", "status": "queued"})
+    page.route("**/api/generate", generate)
+    page.goto(url + "/#/hook")
+    expect(page.locator("#hook")).to_be_visible()
+    expect(page.locator(".create")).to_be_hidden(); expect(page.locator(".workspace")).to_be_hidden()
+    expect(page.locator("#nav-hook")).to_have_class("active")
+    assert page.locator(".sidebar nav a").evaluate_all("links => links.map(a => a.id)") == ["nav-create", "nav-vibe", "nav-hook", "nav-lux", "nav-settings"]
+    expect(page.locator("#nav-hook svg rect")).to_have_count(1)
+    expect(page.locator("#hook")).to_contain_text("Prepare Hook in Settings")
+    page.locator("#nav-settings").click()
+    expect(page.locator("#hook-install")).to_be_disabled()
+    page.locator("#hook-license").check(); page.locator("#hook-install").click()
+    expect(page.locator("#hook-install")).to_have_text("Installed · Verified")
+    page.reload(); expect(page.locator("#hook-license")).to_be_checked()
+    if not page.evaluate("Settings.ready()"):
+        page.locator("#license-test-model").check(); page.locator("#setup-test-model").click()
+        expect(page.locator("#setup-test-model")).to_have_text("Active · Verified", timeout=15000)
+    page.locator("#nav-hook").click()
+    page.locator(".hook-input-settings summary").click()
+    page.locator("#hook-input").select_option("usb-interface")
+    assert page.evaluate("localStorage.getItem('lux.hook.audioInput')") == "usb-interface"
+    page.reload()
+    page.locator(".hook-input-settings summary").click()
+    expect(page.locator("#hook-input")).to_have_value("usb-interface")
+    page.locator("#nav-create").click()
+    page.locator("#title").fill("Synthetic Hook song")
+    page.locator("#lyrics").fill("[Chorus]\nA simple light across the sky")
+    page.locator("#style").fill("Synthetic piano, 120 BPM")
+    before = page.evaluate("({title:$('title').value, lyrics:$('lyrics').value, style:$('style').value, seed:$('seed').value, adv:{...state.adv}})")
+    page.locator("#nav-hook").click()
+    expect(page.locator(".hook-demo")).to_contain_text("Played and recorded by Luke. Not AI-generated.")
+    page.locator("#hook-demo").click()
+    page.wait_for_function("""() => Number.isFinite(document.querySelector("#hook-audio")?.duration)
+        && Math.abs(document.querySelector("#hook-audio").duration - 71.652) < 0.2""")
+    expect(page.locator("#hook-demo")).to_have_text("Replace with Luke's demo")
+    page.locator("#hook-file").set_input_files({"name": "synthetic.wav", "mimeType": "audio/wav", "buffer": reactive_wav()})
+    expect(page.locator("#hook-analyze")).to_be_enabled()
+    page.locator("#hook-start").fill("1"); page.locator("#hook-start").press("Tab")
+    page.locator("#hook-end").fill("5"); page.locator("#hook-end").press("Tab")
+    page.locator("#hook-bpm").fill("120"); page.locator("#hook-bpm").press("Tab")
+    page.locator("#hook-analyze").click()
+    expect(page.locator("#hook-use")).to_be_enabled()
+    expect(page.locator("#hook")).to_contain_text("SheetSage2 analyzed the recording locally.")
+    expect(page.locator("#hook")).to_contain_text("Your style comes from Create")
+    expect(page.locator(".hook-lyrics-note")).to_contain_text("does not yet combine its recorded melody reference with sung lyrics")
+    expect(page.locator("#hook-mode-help")).to_contain_text("instrumental song")
+    expect(page.locator("#hook-melody-audio")).to_have_attribute("src", re.compile("blob:"))
+    assert len(analyses) == 1 and not generated
+    page.screenshot(path=str(artifacts / "hook-desktop.png"))
+    page.locator("#hook-use").click()
+    expect(page.locator(".create")).to_be_visible(); expect(page.locator("#create-hook-reference")).to_be_visible()
+    expect(page.locator("#create-hook-reference")).to_contain_text("cannot yet combine the recorded melody reference with sung lyrics")
+    assert page.evaluate("document.querySelector('#create-hook-reference').getBoundingClientRect().top > document.querySelector('#title').getBoundingClientRect().bottom")
+    assert page.evaluate("({title:$('title').value, lyrics:$('lyrics').value, style:$('style').value, seed:$('seed').value, adv:{...state.adv}})") == before
+    expect(page.locator("#cot [data-v='melody']")).to_have_class("on")
+    assert not generated
+    page.locator("#go").click()
+    page.wait_for_function("state.submitting === false")
+    assert generated[-1]["model_options"]["hook_melody"]["notes"] == reference["notes"]
+    page.evaluate("""() => {
+        const make = (name, extra = {}) => {
+            const {params = {}, ...rest} = extra;
+            return {
+            name, title: name, params: {style: "Synthetic style", lyrics: "", seed: 1, ...params},
+            duration_s: 10, elapsed_s: 1, created: "2026-01-01T00:00:00", sample_rate: 44100,
+            channels: 2, peaks: [], ...rest
+        }; };
+        window.__libraryFilterFixtures = [
+            make("filter-create"),
+            make("filter-vibe", {vibe: {image_count: 1}}),
+            make("filter-hook", {params: {hook_melody: {mode: "develop", target: "instrumental", notes: [], bpm: 120}}}),
+            make("filter-vibe-hook", {vibe: {image_count: 2}, params: {hook_melody: {mode: "arrange", target: "vocal", notes: [], bpm: 120}}})
+        ];
+        state.library.push(...window.__libraryFilterFixtures);
+        render();
+    }""")
+    expect(page.locator("[data-library-filter='all']")).to_have_attribute("aria-pressed", "true")
+    colors = page.evaluate("""() => [
+        getComputedStyle(document.querySelector(".badge-vibe")).color,
+        getComputedStyle(document.querySelector(".badge-hook")).color,
+        getComputedStyle(document.querySelector("#nav-vibe")).color,
+        getComputedStyle(document.querySelector("#nav-hook")).color
+    ]""")
+    assert colors[0] != colors[1] and colors[0] == colors[2] and colors[1] == colors[3], colors
+    page.locator("[data-library-filter='create']").click()
+    expect(page.locator(".song[data-name='filter-create']")).to_have_count(1)
+    expect(page.locator(".song[data-name='filter-vibe']")).to_have_count(0)
+    expect(page.locator(".song[data-name='filter-hook']")).to_have_count(0)
+    page.locator("[data-library-filter='vibe']").click()
+    expect(page.locator(".song[data-name='filter-vibe']")).to_have_count(1)
+    expect(page.locator(".song[data-name='filter-vibe-hook']")).to_have_count(1)
+    expect(page.locator(".song[data-name='filter-hook']")).to_have_count(0)
+    page.locator("[data-library-filter='hook']").click()
+    expect(page.locator(".song[data-name='filter-hook']")).to_have_count(1)
+    expect(page.locator(".song[data-name='filter-vibe-hook']")).to_have_count(1)
+    expect(page.locator(".song[data-name='filter-vibe']")).to_have_count(0)
+    page.locator("[data-library-filter='all']").click()
+    page.evaluate("""() => { state.library = state.library.filter(s => !s.name.startsWith("filter-")); render(); }""")
+    page.locator("#hook-remove-reference").click()
+    assert "hook_melody" not in page.evaluate("Settings.options()")
+    page.go_back(); expect(page.locator("#hook")).to_be_visible()
+    page.go_forward(); expect(page.locator(".create")).to_be_visible()
+    page.locator("#nav-hook").click()
+    page.evaluate("Lux.open('legacy-song')")
+    expect(page.locator("#hook")).to_be_hidden(); expect(page.locator("#lux")).to_be_visible()
+    page.locator("#nav-hook").click()
+    page.add_init_script("window.__hookTracks = []")
+    page.evaluate("""() => { window.__hookTracks = []; const original = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+        navigator.mediaDevices.getUserMedia = async (...args) => { const stream = await original(...args); window.__hookTracks.push(...stream.getTracks()); return stream; }; }""")
+    page.locator("#hook-record").click()
+    page.wait_for_function("window.__hookTracks.length > 0")
+    assert page.evaluate("window.__hookInputConstraint") == "usb-interface"
+    page.wait_for_timeout(2600)
+    page.locator("#hook-record").click()
+    expect(page.locator("#hook-record")).to_have_attribute("aria-pressed", "false")
+    expect(page.locator("#hook-analyze")).to_be_enabled()
+    page.wait_for_function("window.__hookTracks.every(t => t.readyState === 'ended')")
+    page.evaluate("window.__hookInputs = window.__hookInputs.filter(d => d.deviceId !== 'usb-interface'); navigator.mediaDevices.dispatchEvent(new Event('devicechange'))")
+    page.locator(".hook-input-settings summary").click()
+    expect(page.locator("#hook-input-message")).to_contain_text("unavailable")
+    expect(page.locator("#hook-record")).to_be_disabled()
+    page.locator("#hook-input").select_option("")
+    expect(page.locator("#hook-record")).to_be_enabled()
+    page.locator("#hook-record").click(); page.wait_for_function("window.__hookTracks.length === 2")
+    page.locator("#nav-settings").click()
+    page.wait_for_function("window.__hookTracks.every(t => t.readyState === 'ended')")
+    page.locator("#nav-hook").click()
+    page.evaluate("() => { navigator.mediaDevices.getUserMedia = async () => {throw new DOMException('Denied', 'NotAllowedError')}; }")
+    page.locator("#hook-record").click()
+    expect(page.locator("#hook-error")).to_contain_text("Microphone access was denied")
+    page.set_viewport_size({"width": 390, "height": 844})
+    expect(page.locator(".mobile-nav a[href='#/hook']")).to_be_visible()
+    page.screenshot(path=str(artifacts / "hook-mobile.png"))
+    assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
+    assert not errors, errors
+    context.close()
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--artifacts", type=Path, default=ROOT / "outputs/checks/ui")
     parser.add_argument("--readme-screenshots", action="store_true", help="Capture synthetic example screens for the README")
+    parser.add_argument("--hook-only", action="store_true", help="Run only the Hook browser flow with synthetic audio")
     args = parser.parse_args(); args.artifacts.mkdir(parents=True, exist_ok=True)
     from playwright.sync_api import sync_playwright, expect
     chrome = os.environ.get("LUX_TEST_BROWSER") or shutil.which("google-chrome") or "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
@@ -104,7 +288,12 @@ def main():
                         time.sleep(0.1)
                 else: raise RuntimeError("Fixture server did not start")
                 with sync_playwright() as playwright:
-                    browser = playwright.chromium.launch(executable_path=chrome, headless=True)
+                    browser = playwright.chromium.launch(executable_path=chrome, headless=True, args=["--use-fake-device-for-media-stream"])
+                    if args.hook_only:
+                        check_hook(browser, url, args.artifacts, expect)
+                        browser.close()
+                        print(json.dumps({"hook_browser_flow": "passed"}))
+                        return
                     page = browser.new_page(viewport={"width": 1440, "height": 1000})
                     page.add_init_script("""window.__luxMediaSourceCount = 0;
                         const original = AudioContext.prototype.createMediaElementSource;
@@ -114,9 +303,13 @@ def main():
                     errors = []; page.on("pageerror", lambda error: errors.append(str(error)))
                     page.route("https://**/*", lambda route: route.abort())  # external fonts are optional
                     page.goto(url); page.wait_for_url("**/#/settings")
+                    expect(page.locator(".brand")).to_have_attribute("aria-label", "Lux In Music")
+                    expect(page.locator(".brand-sub")).to_have_count(0)
+                    assert page.locator(".logo img").evaluate("img => img.complete && img.naturalWidth > 0")
                     default_lyrics = page.locator("#lyrics").input_value()
                     assert default_lyrics.startswith("[Verse]\n") and "[Outro]\n" in default_lyrics
-                    expect(page.locator("#nav-vibe .new-badge")).to_have_text("NEW")
+                    expect(page.locator("#nav-hook .new-badge")).to_have_text("NEW")
+                    expect(page.locator("#nav-vibe .new-badge")).to_have_count(0)
                     expect(page.locator("#nav-lux .new-badge")).to_have_count(0)
                     expect(page.locator("#vibe-model-card")).to_be_visible()
                     assert abs(page.locator("#vibe-model-card").bounding_box()["width"] - page.locator("#model-test-model").bounding_box()["width"]) < 1
@@ -171,6 +364,11 @@ def main():
                     page.screenshot(path=str(args.artifacts / "settings-desktop.png"))
                     page.locator("#nav-create").click()
                     expect(page.locator("#go")).to_be_enabled()
+                    page.evaluate("window.__originalRandom = Math.random; Math.random = () => 0")
+                    page.locator("#style-random").click()
+                    expect(page.locator("#style")).to_have_value("English, pop, uplifting, 70 BPM, acoustic guitar, electric guitar, female vocal, polished demo mix")
+                    expect(page.locator("#chips .chip.on")).to_have_count(6)
+                    page.evaluate("Math.random = window.__originalRandom")
                     expect(page.locator("#cot")).to_be_hidden()  # the fake provider offers no planning
                     expect(page.locator("#abc")).to_be_hidden()
                     expect(page.locator("#demo-row [data-demo='lux-tenebris']")).to_have_count(1)
@@ -195,7 +393,7 @@ def main():
                     page.locator("#style").fill("My custom sound")
                     expect(page.locator("[data-template='progressive-metal']")).to_have_attribute("aria-pressed", "false")
                     page.locator("[data-template='progressive-metal']").click()
-                    assert page.locator(".create").bounding_box()["width"] == 520
+                    assert 520 < page.locator(".create").bounding_box()["width"] <= 580
                     page.locator(".create").evaluate("panel => panel.scrollTop = 0")
                     page.screenshot(path=str(args.artifacts / "templates-desktop.png"))
                     for width in [1280, 1024, 900, 390]:
@@ -226,6 +424,7 @@ def main():
                     assert page.evaluate("({lyrics: $('lyrics').value, title: $('title').value, seed: $('seed').value, cot: state.cot})") == before_vibe
                     assert len(generation_posts) == posts_before_vibe
                     expect(page.locator("#create-vibe-reference")).to_be_visible()
+                    assert page.evaluate("document.querySelector('#create-vibe-reference').getBoundingClientRect().top > document.querySelector('#title').getBoundingClientRect().bottom")
                     page.locator("#title").fill("Synthetic Vibe cover")
                     page.locator("#go").click()
                     vibe_row = page.locator(".song[data-name]").filter(has_text="Synthetic Vibe cover")
@@ -365,10 +564,20 @@ def main():
                     page.evaluate("audio.pause(); audio.loop = false; setTrack(state.library.find(s => s.name === 'legacy-song'))")
                     page.set_viewport_size({"width": 1440, "height": 1000})
                     def stem_set(route):
-                        route.fulfill(json=[{"id": "vocals", "mode": "vocals", "mode_label": "Vocals / Instrumental",
+                        base = {"id": "vocals", "mode": "vocals", "mode_label": "Vocals / Instrumental",
                             "prompt": None, "elapsed_s": 0.1, "stems": [{"id": name, "label": name,
                                 "file": f"ui-stems/{name}.wav", "peaks": [0.1] * 16, "rms_db": -20, "silent": False}
-                                for name in ("vocals", "instrumental")]}])
+                                for name in ("vocals", "instrumental")]}
+                        takes = []
+                        for number in (1, 2):
+                            stems = [dict(stem) for stem in base["stems"]]
+                            stems[0]["file"] = f"ui-stems/vocals-take-{number}.wav"
+                            takes.append({"id": f"vocals-edit-{number}", "base": "vocals", "mode": "vocals",
+                                "mode_label": "Vocals / Instrumental", "prompt": None, "elapsed_s": 0.1,
+                                "created": f"2026-10-17T00:00:0{number}", "edit": {"stem": "vocals", "label": "vocals",
+                                    "start_s": 2, "end_s": 5}, "stems": stems})
+                        route.fulfill(json=[base, *takes])
+                    page.route("**/outputs/ui-stems/*", lambda route: route.fulfill(body=reactive_wav(), content_type="audio/wav"))
                     page.route("**/api/lux/*", stem_set)
                     page.route("**/api/beats/*", lambda route: route.fulfill(json={"bpm": 120, "offset_s": 0, "beat_s": 0.5, "beats_per_bar": 4}))
                     page.locator("#nav-vibe").click()
@@ -381,9 +590,46 @@ def main():
                     song = page.evaluate("state.library.find((song) => song.name !== 'legacy-song').name")
                     page.evaluate("name => Lux.open(name)", song)
                     expect(page.locator(".lx-track")).to_have_count(2)
+                    expect(page.locator(".lx-tabs button")).to_have_count(1)
+                    expect(page.locator(".lx-track").nth(0).locator(".lx-track-versions .lx-version")).to_have_text(["Original", "Take 1", "Take 2"])
+                    expect(page.locator(".lx-track").nth(1).locator(".lx-track-versions")).to_have_count(0)
+                    track = page.locator(".lx-track").first
+                    assert track.locator(".lx-track-versions").bounding_box()["y"] > track.locator(".lx-tbtns").bounding_box()["y"]
+                    take1 = page.locator(".lx-version").filter(has_text="Take 1")
+                    take1.hover()
+                    expect(page.locator("#lx-take-help")).to_be_visible()
+                    expect(page.locator("#lx-take-help")).to_contain_text("Regenerated 0:02 – 0:05")
+                    expect(take1).to_have_attribute("aria-describedby", "lx-take-help")
+                    expect(page.locator("#lx-take-help canvas")).to_be_visible()
+                    assert page.locator("#lx-take-help .lx-take-wave i").evaluate("el => [el.style.left, el.style.width]") == ["10%", "15%"]
+                    expect(page.locator("#lx-take-help")).to_be_in_viewport()
+                    helper = page.locator("#lx-take-help")
+                    assert helper.bounding_box()["y"] >= take1.bounding_box()["y"] + take1.bounding_box()["height"]
+                    assert helper.evaluate("el => getComputedStyle(el).backgroundColor") == "rgb(20, 19, 22)"
+                    page.screenshot(path=str(args.artifacts / "studio-take-helper.png"))
+                    track.locator("[data-lx='mute']").hover()
+                    expect(page.locator("#lx-take-help")).to_have_count(0)
+                    take1.focus()
+                    expect(page.locator("#lx-take-help")).to_be_visible()
+                    page.keyboard.press("Escape")
+                    expect(page.locator("#lx-take-help")).to_have_count(0)
+                    page.locator(".lx-version").filter(has_text="Take 2").click()
+                    expect(page.locator(".lx-version.on")).to_have_text("Take 2")
+                    expect(page.locator(".lx-tabs button.on")).to_have_count(1)
+                    page.locator(".lx-version").filter(has_text="Original").click()
+                    expect(page.locator(".lx-version.on")).to_have_text("Original")
                     expect(page.locator(".lx-edit-btn")).to_have_count(2)
                     page.locator(".lx-edit-btn").first.click()
                     expect(page.locator("#lx-editbar")).to_contain_text("Editing vocals")
+                    lane = page.locator(".lx-lane canvas").first.bounding_box()
+                    page.mouse.move(lane["x"] + lane["width"] * .2, lane["y"] + lane["height"] / 2)
+                    page.mouse.down()
+                    page.mouse.move(lane["x"] + lane["width"] * .4, lane["y"] + lane["height"] / 2, steps=4)
+                    page.mouse.up()
+                    direction = page.locator("[data-lx='eb-direction']")
+                    expect(direction).to_be_visible()
+                    regenerate = page.locator("[data-lx='eb-go']")
+                    assert regenerate.bounding_box()["y"] >= direction.bounding_box()["y"] + direction.bounding_box()["height"]
                     page.locator("[data-lx='new']").click()
                     expect(page.locator("[data-lx='mode'][data-mode='anything']")).to_have_count(0)
                     expect(page.locator("[data-lx='mode']")).to_have_count(3)
@@ -399,12 +645,48 @@ def main():
                     page.route("**/api/settings/status", duration_capability)
                     page.locator("#nav-create").click()
                     page.evaluate("Settings.refresh(true)")
+                    divider = page.locator("#panel-resizer")
+                    expect(divider).to_be_visible()
+                    width_before = page.locator(".create").evaluate("el => el.getBoundingClientRect().width")
+                    drag = divider.bounding_box()
+                    page.mouse.move(drag["x"] + drag["width"] / 2, drag["y"] + 160)
+                    page.mouse.down()
+                    page.mouse.move(drag["x"] + drag["width"] / 2 + 64, drag["y"] + 160, steps=4)
+                    page.mouse.up()
+                    width_after_drag = page.locator(".create").evaluate("el => el.getBoundingClientRect().width")
+                    assert width_after_drag >= width_before + 50, (width_before, width_after_drag)
+                    expect(divider).to_have_attribute("aria-valuenow", str(round(width_after_drag)))
+                    divider.focus(); page.keyboard.press("ArrowLeft")
+                    width_after_key = page.locator(".create").evaluate("el => el.getBoundingClientRect().width")
+                    assert width_after_key < width_after_drag
+                    assert page.evaluate("localStorage.getItem('lux.createWidth')") == str(round(width_after_key))
+                    divider.focus(); page.keyboard.press("End")
+                    width_at_max = page.locator(".create").evaluate("el => el.getBoundingClientRect().width")
+                    available_width = page.evaluate("document.querySelector('.app').clientWidth - document.querySelector('.sidebar').getBoundingClientRect().width - document.querySelector('#panel-resizer').offsetWidth")
+                    library_at_max = page.locator(".workspace").evaluate("el => el.getBoundingClientRect().width")
+                    assert width_at_max <= available_width * 0.48 + 1, (width_at_max, available_width)
+                    assert library_at_max >= available_width * 0.52 - 1, (library_at_max, available_width)
                     expect(page.locator("#duration-mode")).to_have_count(0)
                     expect(page.locator("#duration-hint")).to_be_visible()
                     page.locator("#lyrics").fill("[Verse]\n" + "light " * 100)
                     expect(page.locator("#lyrics-advice")).to_contain_text("closing lyric phrase")
                     expect(page.locator("#cot")).to_be_visible()
                     expect(page.locator("#cot [data-v='off']")).to_have_class("on")
+                    page.locator(".advanced summary").click()
+                    expect(page.locator(".advanced-help")).to_have_count(7)
+                    for help_button in page.locator(".advanced-help:visible").all():
+                        help_button.hover()
+                        expect(help_button.locator("[role='tooltip']")).to_be_visible()
+                        if help_button.locator("[role='tooltip']").is_visible():
+                            geometry = page.evaluate("""button => {
+                                const tip = button.querySelector('[role=tooltip]').getBoundingClientRect();
+                                const pane = document.querySelector('.create').getBoundingClientRect();
+                                const sidebar = document.querySelector('.sidebar').getBoundingClientRect();
+                                return {tipLeft: tip.left, paneLeft: pane.left, sidebarRight: sidebar.right};
+                            }""", help_button.element_handle())
+                            assert geometry["tipLeft"] >= geometry["paneLeft"] and geometry["tipLeft"] >= geometry["sidebarRight"], geometry
+                    page.locator(".advanced-help").first.focus()
+                    expect(page.locator(".advanced-help").first.locator("[role='tooltip']")).to_be_visible()
                     for mode in ("off", "melody", "full"):
                         button = page.locator(f"#cot [data-v='{mode}']")
                         expect(button.locator("svg")).to_have_count(1)
@@ -445,7 +727,37 @@ def main():
                     page.unroute("**/api/jobs")
                     analysis_capable = False
                     page.evaluate("Settings.refresh(true)")
+                    page.route("**/outputs/synthetic-hook-reference.wav", lambda route: route.fulfill(body=reactive_wav(), content_type="audio/wav"))
+                    page.evaluate("""async () => {
+                        const base = state.library.find(s => s.name === 'legacy-song');
+                        window.__hookAudioLayoutFixture = {...base, name: 'hook-audio-layout', title: 'Hook audio layout',
+                            params: {...base.params, hook_melody: {mode: 'arrange', target: 'instrumental', notes: Array(143).fill({pitch: 60}), bpm: 63}},
+                            artifacts: {hook_reference_audio: 'synthetic-hook-reference.wav'}};
+                        await openDrawer(window.__hookAudioLayoutFixture);
+                    }""")
+                    expect(page.locator("#drawer .hook-reference-player")).to_be_visible()
+                    expect(page.locator("#drawer .hook-reference-player")).to_have_attribute("preload", "metadata")
+                    page.wait_for_function("document.querySelector('#drawer .hook-reference-player').readyState >= 1")
+                    audio_layout = page.evaluate("""() => {
+                        const audio = document.querySelector('#drawer .hook-reference-player').getBoundingClientRect();
+                        const section = document.querySelector('#drawer .d-hook-audio').getBoundingClientRect();
+                        return {audio: audio.width, section: section.width};
+                    }""")
+                    assert audio_layout["audio"] > 280 and abs(audio_layout["audio"] - audio_layout["section"]) < 2, audio_layout
+                    page.evaluate("closeDrawer(); window.__hookAudioLayoutFixture = null")
+                    page.evaluate("""async () => {
+                        const base = state.library.find(s => s.name === 'legacy-song');
+                        await openDrawer({...base, params: {...base.params, hook_melody: {mode: 'arrange', target: 'instrumental', notes: Array(8).fill({pitch: 60}), bpm: 120}}});
+                    }""")
+                    expect(page.locator("#drawer .d-hook-audio")).to_contain_text("original recording was not saved")
+                    page.evaluate("closeDrawer()")
                     page.locator(".song[data-name='legacy-song'] [data-act='info']").click()
+                    expect(page.locator("#drawer .d-export-group h4")).to_have_text("Export")
+                    audio_exports = page.locator("#drawer .d-export-actions a")
+                    expect(audio_exports).to_have_count(3)
+                    assert [audio_exports.nth(i).inner_text() for i in range(3)] == ["WAV", "FLAC", "MP3"]
+                    export_boxes = audio_exports.evaluate_all("links => links.map(a => { const r = a.getBoundingClientRect(); return [r.x, r.y, r.width] })")
+                    assert len({round(box[1]) for box in export_boxes}) == 1, export_boxes
                     for fmt, media in {"flac": "audio/flac", "mp3": "audio/mpeg"}.items():
                         link = page.locator(f"#drawer a[href='/api/export/legacy-song?format={fmt}']")
                         expect(link).to_have_text(fmt.upper())
@@ -494,11 +806,13 @@ def main():
                     expect(fallback_page.locator("#vibe-effects-message")).to_contain_text("Playback continues")
                     assert fallback_page.evaluate("!audio.paused")
                     fallback.close()
+                    check_hook(browser, url, args.artifacts, expect)
                     if args.readme_screenshots:
                         from readme_screenshots import capture
                         capture(browser, url, ROOT / "docs/images")
                     browser.close()
-                print(json.dumps({"vibe_effects_unavailable_preserves_playback": True,
+                print(json.dumps({"hook_upload_recording_navigation_and_transfer": True,
+                                  "vibe_effects_unavailable_preserves_playback": True,
                                   "vibe_effects_follow_live_audio_and_silence": True, "vibe_effects_pause_and_visibility": True,
                                   "vibe_effects_toggle_persists_without_stopping_audio": True, "vibe_effects_single_media_source": True,
                                   "vibe_five_image_validation_and_order": True, "vibe_advanced_opt_out_and_transfer": True,

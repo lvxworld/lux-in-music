@@ -12,6 +12,7 @@ import json
 import math
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+from .yue2_hook import HookMelody, apply_hook, reference_score
 
 SEMANTIC_FPS = 25  # semantic codec frames per second of audio
 
@@ -30,6 +31,7 @@ class YuE2Params(BaseModel):
 
     # --- ABC conditioning (cot=melody|full) ---
     abc: str | None = Field(None, description="Inline ABC score")
+    hook_melody: HookMelody | None = None
 
     # --- semantic sampling (controls the song itself, incl. length) ---
     semantic_temperature: float | None = Field(None, ge=0, le=5)
@@ -50,6 +52,11 @@ class YuE2Params(BaseModel):
 
     @model_validator(mode="after")
     def _check(self):
+        if self.hook_melody:
+            if self.abc:
+                raise ValueError("Remove the supplied ABC score before using a Hook melody.")
+            if self.cot == "off":
+                self.cot = "melody"
         if self.instrumental:
             # Upstream's instrumental guidance; normalizing here keeps edits and token recovery identical.
             # The vocal line is muted in the planned score, so planning is required.
@@ -61,7 +68,12 @@ class YuE2Params(BaseModel):
         if self.target_duration_s:
             if self.cot == "off":
                 self.cot = "full"
-            cap = min(360, self.target_duration_s + max(15, self.target_duration_s * 0.125))
+            # A transcribed recording is an approximate timing reference. Its
+            # new performance may need more release time than a native plan.
+            reference_timing = self.hook_melody and self.hook_melody.mode == "arrange"
+            allowance = (max(30, self.target_duration_s * .25) if reference_timing
+                         else max(15, self.target_duration_s * .125))
+            cap = min(360, self.target_duration_s + allowance)
             if self.max_duration_s is None:
                 self.max_duration_s = cap
             if self.max_duration_s < self.target_duration_s:
@@ -82,7 +94,7 @@ class YuE2Params(BaseModel):
 
     def to_request(self) -> dict:
         """Build the body for audio.cpp POST /v1/tasks/run (`request` field)."""
-        skip = {"title", "lyrics", "instrumental", "seed", "max_duration_s", "target_duration_s"}
+        skip = {"title", "lyrics", "instrumental", "seed", "max_duration_s", "target_duration_s", "hook_melody"}
         options = {
             k: str(v).lower() if isinstance(v, bool) else str(v)
             for k, v in self.model_dump(exclude_none=True).items()
@@ -94,7 +106,7 @@ class YuE2Params(BaseModel):
 class YuE2Adapter:
     """Translate shared inputs into the native YuE2 request."""
     capabilities = {"planning": ["off", "melody", "full"], "abc": True, "instrumental": True,
-                    "duration_analysis": True,
+                    "duration_analysis": True, "hook": True,
                     "semantic_edit": True, "max_duration_s": 360,
                     "target_duration_s": 330, "min_target_duration_s": 30,
                     "options": ["num_inference_steps", "guidance_scale", "semantic_temperature",
@@ -190,6 +202,9 @@ class YuE2Adapter:
         if bpm is not None:
             text, _ = retime(text, bpm)
             info.update(requested_bpm=bpm, tempo_adjusted_to_match_style=score.bpm != bpm)
+        if p.hook_melody:
+            text, hook = apply_hook(text, p.hook_melody, p.instrumental)
+            info["hook"] = hook
         if p.instrumental:
             text = mute_vocals(text)
         return text, info
@@ -209,11 +224,11 @@ class YuE2Adapter:
             chosen, info = fit(source["score"], target)
             return chosen, {**tempo, **info}
 
-        if p.abc:
-            source["score"] = p.abc
+        if p.abc or p.hook_melody and p.hook_melody.mode == "arrange":
+            source["score"] = p.abc or reference_score(p.hook_melody, p.instrumental)
             if p.instrumental:
                 from .yue2_score import mute_vocals
-                source["score"] = mute_vocals(p.abc)
+                source["score"] = mute_vocals(source["score"])
             score = inspect(source["score"])
             minimum = score.duration_s
             report["planning"] = {"source": "supplied", "planned_duration_s": minimum, "bpm": score.bpm}
@@ -238,7 +253,8 @@ class YuE2Adapter:
         recommendation = min(limit, max(30, math.ceil(minimum / 5) * 5)) if minimum <= limit else None
         status = "too_long" if recommendation is None else "too_short" if too_short else "ready"
         planned = minimum
-        if recommendation is not None and not p.abc:
+        supplied = bool(p.abc or p.hook_melody and p.hook_melody.mode == "arrange")
+        if recommendation is not None and not supplied:
             _, info = fit(source["score"], recommendation if too_short or not p.target_duration_s else target)
             report["planning"].update(info)
             planned = info["planned_duration_s"]
@@ -247,7 +263,7 @@ class YuE2Adapter:
                    "recommended_target_s": recommendation, "selected_target_s": p.target_duration_s,
                    "bpm": inspect(source["score"]).bpm, "max_target_s": limit,
                    "removed_instrumental_bars": report["planning"].get("removed_instrumental_bars", 0),
-                   "supplied_score": bool(p.abc), "instrumental": p.instrumental}
+                   "supplied_score": supplied, "instrumental": p.instrumental}
         return {"analysis": summary, "prepared": {"score": source["score"], "report": report, "artifacts": artifacts},
                 "params": p.model_dump(exclude_none=True)}
 
@@ -279,12 +295,13 @@ class YuE2Adapter:
                 report.update(copy.deepcopy(prepared["report"]))
                 report["planning"] = info
                 artifacts = copy.deepcopy(prepared["artifacts"])
-            elif p.abc:
-                score = inspect(p.abc)
+            elif p.abc or p.hook_melody and p.hook_melody.mode == "arrange":
+                supplied_score = p.abc or reference_score(p.hook_melody, p.instrumental)
+                score = inspect(supplied_score)
                 if score.duration_s > p.target_duration_s:
                     raise ScoreError(f"Your score lasts about {score.duration_s:.0f}s. Choose a longer target or edit the score; supplied scores are never shortened automatically.")
                 report["planning"] = {"planned_duration_s": round(score.duration_s, 2), "source": "supplied"}
-                chosen = p.abc
+                chosen = supplied_score
             else:
                 requested_bpm = self._requested_bpm(p.style)
 
@@ -307,7 +324,12 @@ class YuE2Adapter:
             report["semantic_attempts"] = []
             accepted = None
             planned = report["planning"]["planned_duration_s"]
-            tolerance = lambda seconds: max(15, seconds * 0.125)
+            reference_timing = bool(p.hook_melody and p.hook_melody.mode == "arrange")
+            tolerance = lambda seconds: max(15, seconds * .125)
+            finishing_tolerance = (lambda seconds: max(30, seconds * .25)) if reference_timing else tolerance
+            if reference_timing:
+                report["recording_timing"] = {"policy": "approximate", "planned_duration_s": planned,
+                                               "finishing_allowance_s": p.max_duration_s - p.target_duration_s}
             for attempt in range(2):
                 if progress:
                     progress(f"Composing and checking the ending ({attempt + 1}/2)")
@@ -322,7 +344,8 @@ class YuE2Adapter:
                     artifacts.append({**semantic, "id": f"semantic-attempt-{attempt + 1}"})
                     codes = json.loads(base64.b64decode(semantic["payload"]))
                     entry["duration_s"] = len(codes) / SEMANTIC_FPS
-                    entry["target_match"] = abs(entry["duration_s"] - p.target_duration_s) <= tolerance(p.target_duration_s)
+                    drift = entry["duration_s"] - p.target_duration_s
+                    entry["target_match"] = -tolerance(p.target_duration_s) <= drift <= finishing_tolerance(p.target_duration_s)
                     # Planning only shortens, so short lyrics give a short plan. Accept a complete
                     # song that follows its plan; an ending far before the plan dropped sections.
                     entry["shorter_than_target"] = (entry["duration_s"] < p.target_duration_s and not entry["target_match"]
@@ -334,13 +357,17 @@ class YuE2Adapter:
                     break
             if not accepted:
                 report.update(report["semantic_attempts"][-1])
-                error = ScoreError("The model did not finish near the requested duration after two attempts. "
-                                   "Try shorter verses/repeated choruses, a longer duration, or a more compact style. "
-                                   "No unfinished audio was rendered. Planning and semantic diagnostics were saved.")
+                advice = ("Try a shorter, clearer recording phrase, review the detected tempo, or choose Develop into a song. "
+                          if p.hook_melody else "Try fewer repeated sections, a shorter score, or a more compact style. ")
+                error = ScoreError("The model did not finish near the expected duration after two attempts. "
+                                   + advice + "No unfinished audio was rendered. Planning and semantic diagnostics were saved.")
                 error.diagnostics = {"generation": report, "artifacts": artifacts}
                 raise error
             semantic, codes, entry = accepted
             report.update(entry)
+            if reference_timing:
+                report["recording_timing"].update(actual_duration_s=entry["duration_s"],
+                                                   drift_s=round(entry["duration_s"] - planned, 2))
             report["semantic_seed"] = entry["seed"]
             render = copy.deepcopy(request)
             render["options"].update(semantic_prefix=json.dumps(codes),
@@ -370,6 +397,10 @@ class YuE2Adapter:
         # Supplied ABC is not exported by the native runtime, so retain our plan.
         data["artifacts"] = artifacts + data.get("artifacts", [])
         report.update(self.ending(data))
+        if report.get("recording_timing"):
+            timing = report["recording_timing"]
+            report["message"] += (f" The recording score is about {timing['planned_duration_s']:.0f}s; "
+                                  f"the new performance lasts about {timing['actual_duration_s']:.0f}s. Reference timing is approximate.")
         if report.get("shorter_than_target"):
             report["message"] += (f" It is shorter than the {p.target_duration_s:.0f}s target: the arrangement for these"
                                   f" lyrics lasts about {planned:.0f}s. Add sections for a longer song.")
