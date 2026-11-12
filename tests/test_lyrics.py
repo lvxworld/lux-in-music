@@ -72,6 +72,14 @@ class LyricsSettingsTests(WriterFixture):
         self.assertFalse(path.with_suffix(".json.tmp").exists())
         self.assertTrue(self.make_writer().status()["api_key_set"])
 
+    def test_saved_key_is_private_even_with_a_stale_temp_file(self):
+        temp = self.root / "lyrics.json.tmp"
+        temp.write_text("stale")
+        os.chmod(temp, 0o644)
+        self.configure(api_key="sk-synthetic")
+        self.assertEqual(stat.S_IMODE((self.root / "lyrics.json").stat().st_mode), 0o600)
+        self.assertFalse(temp.exists())
+
     def test_omitted_key_is_kept_and_empty_key_clears_it(self):
         self.configure(api_key="sk-synthetic")
         self.assertTrue(self.writer.save({"model": "model-b", "api_key": None})["api_key_set"])
@@ -140,6 +148,26 @@ class ModelDiscoveryTests(WriterFixture):
         with self.assertRaises(LyricsUpstreamError) as caught:
             writer.generate(concept="Synthetic concept")
         self.assertIn("redirects to https://llm.test/v1", str(caught.exception))
+
+    def test_redirected_writes_never_forward_the_private_body(self):
+        for status in (301, 302, 307, 308):
+            with self.subTest(status=status):
+                seen = []
+                def respond(request):
+                    seen.append(request)
+                    if request.url.host == "llm.test":
+                        return httpx.Response(status, headers={"location": "http://other.test/v1/chat/completions?x=1"})
+                    return self.endpoint(request)
+                writer = LyricsWriter(self.root, client=lambda: httpx.Client(transport=httpx.MockTransport(respond),
+                                                                             follow_redirects=True))
+                writer.save({"base_url": "http://llm.test/v1", "model": "model-a", "api_key": "sk-synthetic"})
+                with self.assertRaises(LyricsUpstreamError) as caught:
+                    writer.generate(concept="Synthetic private concept")
+                self.assertEqual(len(seen), 1)
+                self.assertEqual(seen[0].url.host, "llm.test")
+                self.assertEqual(seen[0].method, "POST")
+                self.assertIn("Synthetic private concept", seen[0].content.decode())
+                self.assertIn("redirects to http://other.test/v1.", str(caught.exception))
 
     def test_non_openai_model_lists_are_rejected(self):
         writer = LyricsWriter(self.root, client=lambda: httpx.Client(transport=httpx.MockTransport(
@@ -269,6 +297,10 @@ class CleanLyricsTests(unittest.TestCase):
         self.assertEqual(clean_lyrics(reply), "[Verse]\nSynthetic line\n\n[Chorus]\nSynthetic hook\n\n"
                                              "[Pre-Chorus]\nSynthetic lift")
 
+    def test_reasoning_without_an_opening_tag_is_dropped(self):
+        reply = "Draft:\n[Verse]\ndraft line one\n</think>\n[Verse]\nreal line\n[Chorus]\nreal chorus"
+        self.assertEqual(clean_lyrics(reply), "[Verse]\nreal line\n\n[Chorus]\nreal chorus")
+
     def test_unfinished_reasoning_and_untagged_replies_fail(self):
         for reply in ("<think>Synthetic plan without an end", "Synthetic untagged text", "[Verse]\n[Chorus]", ""):
             with self.subTest(reply=reply), self.assertRaises(LyricsUpstreamError):
@@ -277,6 +309,16 @@ class CleanLyricsTests(unittest.TestCase):
     def test_long_replies_are_capped_on_a_line_boundary(self):
         result = clean_lyrics("[Verse]\n" + "Synthetic line\n" * 400)
         self.assertLessEqual(len(result), lyrics.MAX_LYRICS_CHARS)
+        self.assertTrue(result.endswith("Synthetic line"))
+
+    def test_truncation_drops_a_trailing_section_tag(self):
+        line = "Synthetic line\n"
+        verse = "[Verse]\n" + line * ((lyrics.MAX_LYRICS_CHARS - len("[Verse]\n") - 10) // len(line))
+        reply = verse + "\n[Chorus]\nSynthetic hook"
+        self.assertGreater(len(reply), lyrics.MAX_LYRICS_CHARS)
+        result = clean_lyrics(reply)
+        self.assertLessEqual(len(result), lyrics.MAX_LYRICS_CHARS)
+        self.assertNotIn("[Chorus]", result)
         self.assertTrue(result.endswith("Synthetic line"))
 
     def test_every_vibe_direction_suggests_a_known_mood(self):

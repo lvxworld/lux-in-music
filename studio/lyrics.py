@@ -115,7 +115,7 @@ class LyricsUpstreamError(RuntimeError):
 
 def clean_lyrics(text: str) -> str:
     """Keep the lyric body of a model reply, with only the shared section tags."""
-    text = re.sub(r"<think>.*?(</think>|$)", "", text or "", flags=re.S | re.I)
+    text = _strip_reasoning(text)
     fenced = re.search(r"```[^\n]*\n(.*?)```", text, flags=re.S)
     text = fenced.group(1) if fenced else text.replace("```", "")
     canonical = {section.casefold(): section for section in SECTIONS}
@@ -149,6 +149,8 @@ def clean_lyrics(text: str) -> str:
     result = "\n".join(lines).strip()
     if len(result) > MAX_LYRICS_CHARS:
         result = result[:MAX_LYRICS_CHARS].rsplit("\n", 1)[0].strip()
+        while result and re.fullmatch(r"\[[^\]]*\]", result.rsplit("\n", 1)[-1].strip()):
+            result = result.rsplit("\n", 1)[0].strip()
     if not re.search(r"^[^\[\n].*$", result, flags=re.M):
         raise LyricsUpstreamError("The lyrics model did not return lyrics with section tags. Try again or "
                                   "choose a different model in Settings.")
@@ -261,8 +263,10 @@ class LyricsWriter:
                 state["temperature"] = temperature
             self.state_dir.mkdir(parents=True, exist_ok=True)
             temp = self.path.with_suffix(".json.tmp")
-            temp.write_text(json.dumps(state, indent=2) + "\n")
-            os.chmod(temp, 0o600)
+            descriptor = os.open(temp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+            with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+                handle.write(json.dumps(state, indent=2) + "\n")
+            os.chmod(temp, 0o600)  # Also tighten a stale temp file created with wider permissions.
             temp.replace(self.path)
             self.state, self.state_error = state, None
         return self.status()
@@ -273,19 +277,26 @@ class LyricsWriter:
                 raise LyricsNotConfigured("Set up a lyrics writer in Settings first.")
             base_url, api_key = self.state["base_url"], self._api_key()
         headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
+        request_url = base_url + path
         try:
             with self.client() as client:
-                response = client.request(method, base_url + path, headers=headers, **kwargs)
+                if method == "GET":
+                    response = client.request(method, request_url, headers=headers, **kwargs)
+                else:
+                    # Never re-send a private body to a redirect target; explain the redirect instead.
+                    response = client.request(method, request_url, headers=headers, follow_redirects=False, **kwargs)
         except httpx.TimeoutException as error:
             raise LyricsUpstreamError("The lyrics endpoint did not answer in time.") from error
         except httpx.HTTPError as error:
             raise LyricsUpstreamError(f"The lyrics endpoint could not be reached ({type(error).__name__}). "
                                       "Check the base URL in Settings.") from error
+        if method != "GET" and 300 <= response.status_code < 400:
+            target = httpx.URL(request_url).join(response.headers.get("location", request_url))
+            final_base = str(target.copy_with(query=None, fragment=None))
+            final_base = final_base[:-len(path)] if final_base.endswith(path) else final_base
+            raise LyricsUpstreamError(f"The endpoint redirects to {final_base}. Use that base URL in Settings.")
         final_base = str(response.url).split("?")[0]
         final_base = final_base[:-len(path)] if final_base.endswith(path) else final_base
-        if response.history and method != "GET":
-            # A redirected POST turns into a GET (HTTP 405), so ask for the final address instead.
-            raise LyricsUpstreamError(f"The endpoint redirects to {final_base}. Use that base URL in Settings.")
         if resolved is not None:
             resolved.append(final_base)
         if response.status_code in {401, 403}:
