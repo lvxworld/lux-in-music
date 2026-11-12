@@ -36,6 +36,7 @@ const Lux = (() => {
     beats: null,        // {bpm, offset_s, beat_s, beats_per_bar} of the current song
     snap: true,         // snap edit selections to the beat grid
     variation: "new",   // "new" = write the selection anew, "same" = same notes, new performance
+    direction: "",
     listen: "solo",     // Play selection: "solo" = only the armed stem, "mix" = full mix
     audition: null,     // while auditioning solo, index of the only audible track
   };
@@ -44,18 +45,20 @@ const Lux = (() => {
 
   function visible() { return document.body.classList.contains("lux-mode"); }
   function show(on) {
+    hideTakeHelp();
     document.body.classList.toggle("lux-mode", on);
     document.getElementById("nav-create").classList.toggle("active", !on);
     document.getElementById("nav-lux").classList.toggle("active", on);
-    if (location.hash === "#/settings" || location.hash === "#/vibe") document.getElementById("nav-create").classList.remove("active");
+    if (["#/settings", "#/vibe", "#/hook"].includes(location.hash)) document.getElementById("nav-create").classList.remove("active");
     if (location.hash === "#/vibe") document.getElementById("nav-lux").classList.remove("active");
     if (!on) pause();
   }
   async function open(name) {
+    if (L.song?.name !== name) L.direction = "";
     if (location.hash !== `#/lux/${name}`) {
       history.pushState(null, "", `#/lux/${encodeURIComponent(name)}`);
       // pushState does not emit hashchange; retire the other views explicitly.
-      Settings.route(); window.Vibe?.route();
+      Settings.route(); window.Vibe?.route(); window.Hook?.route();
     }
     await route();
   }
@@ -87,6 +90,7 @@ const Lux = (() => {
   /* ---------- views ---------- */
 
   function render() {
+    hideTakeHelp();
     if (!L.song) return renderPicker();
     const job = activeJob();
     if (job) return renderProcessing(job);
@@ -171,9 +175,11 @@ const Lux = (() => {
   }
 
   function renderMixer() {
+    hideTakeHelp();
     const set = L.set;
-    const setName = (x) => x.edit ? `${esc(x.edit.label)} ${fmt(x.edit.start_s)}–${fmt(x.edit.end_s)}` : esc(x.prompt ? `“${x.prompt}”` : MODE_INFO[x.mode].title);
-    const tabs = L.sets.map((x, i) => `<button class="${x === set ? "on" : ""} ${x.edit ? "take" : ""}" data-lx="set" data-i="${i}" title="${x.edit ? "Regenerated take" : "Separation"}">${x.edit ? '<span class="take-dot"></span>' : ""}${setName(x)}</button>`).join("");
+    const setName = (x) => esc(x.prompt ? `“${x.prompt}”` : MODE_INFO[x.mode].title);
+    const activeBaseId = editRoot(set)?.id || set.id;
+    const tabs = L.sets.filter((x) => !x.edit).map((x) => `<button class="${x.id === activeBaseId ? "on" : ""}" data-lx="set" data-set-id="${esc(x.id)}" title="Separation">${setName(x)}</button>`).join("");
     el().innerHTML = header(`<a class="btn" href="/outputs/${encodeURIComponent(L.song.name)}.wav" download>Original WAV</a>`) + `
       <div class="lx-mixer">
         <div class="lx-bar">
@@ -193,7 +199,7 @@ const Lux = (() => {
         </div>
         <div class="lx-editbar" id="lx-editbar"></div>
         <div class="lx-tracks" id="lx-tracks">${set.stems.map((st, i) => trackRow(st, i, set)).join("")}</div>
-        <div class="lx-foot"><b class="lx-tip">Tip:</b> press <b>Edit</b> on a track, then drag across its lane to regenerate that part of the stem only. Separated in ${fmt(set.elapsed_s)} with ${esc(MODE_INFO[set.mode].model)}${L.loadingSet ? " · loading audio…" : ""}</div>
+        <div class="lx-foot">${set.edit?.direction ? `<b>Direction used:</b> ${esc(set.edit.direction)} · ` : ""}<b class="lx-tip">Tip:</b> press <b>Edit</b> on a track, then drag across its lane to regenerate that part of the stem only. Separated in ${fmt(set.elapsed_s)} with ${esc(MODE_INFO[set.mode].model)}${L.loadingSet ? " · loading audio…" : ""}</div>
       </div>`;
     syncTrackUI(); drawLanes(); updateTransport(); renderEditBar();
   }
@@ -234,8 +240,13 @@ const Lux = (() => {
             </div></div>
           <button class="btn" data-lx="eb-play"><svg viewBox="0 0 24 24">${ICON.play}</svg>Play selection</button>
           <div class="segmented small lx-eb-takes">${[1, 2, 3].map((n) => `<button type="button" data-lx="eb-takes" data-n="${n}" class="${L.stemTakes === n ? "on" : ""}" title="${n} take${n > 1 ? "s" : ""}">${n}×</button>`).join("")}</div>
-          <button class="create-btn lx-eb-go" data-lx="eb-go"><svg viewBox="0 0 24 24"><path d="M12 3l1.9 5.8L20 10l-5 3.9L16.5 20 12 16.6 7.5 20 9 13.9 4 10l6.1-1.2z"/></svg>Regenerate</button>
           <button class="icon-btn" data-lx="eb-clear" title="Clear selection"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+        </div>
+        <label class="lx-eb-direction">Direction for this part <span>Optional · guides the selected section</span>
+          <textarea data-lx="eb-direction" maxlength="500" rows="2" placeholder="e.g. Make the chorus more powerful, with a brighter melody and stronger drums">${esc(L.direction || "")}</textarea>
+        </label>
+        <div class="lx-eb-actions">
+          <button class="create-btn lx-eb-go" data-lx="eb-go"><svg viewBox="0 0 24 24"><path d="M12 3l1.9 5.8L20 10l-5 3.9L16.5 20 12 16.6 7.5 20 9 13.9 4 10l6.1-1.2z"/></svg>Regenerate</button>
         </div>
       </div>` : ""}
       ${running.map((j) => `<div class="ed-job" data-sjob="${j.id}"><span class="spinner-ring"></span>
@@ -269,7 +280,8 @@ const Lux = (() => {
     const { i, a, b } = L.laneSel, st = L.set.stems[i];
     for (let k = 0; k < L.stemTakes; k++) {
       const body = { song: L.song.name, set_id: L.set.id, stem: st.id, start_s: +a.toFixed(2), end_s: +b.toFixed(2),
-                     seed: Math.floor(Math.random() * 2 ** 31), variation: L.variation };
+                     seed: Math.floor(Math.random() * 2 ** 31), variation: L.variation,
+                     direction: (document.querySelector('[data-lx="eb-direction"]')?.value || "").trim() || null };
       const r = await fetch("/api/edit/replace-stem", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       if (!r.ok) { const d = (await r.json()).detail; alert(typeof d === "string" ? d : JSON.stringify(d)); return; }
       const job = await r.json();
@@ -280,6 +292,13 @@ const Lux = (() => {
 
   function trackRow(st, i, set) {
     const c = STEM_COLORS[st.id] || "#f0a23c";
+    const root = editRoot(set);
+    const takes = root ? L.sets.filter((x) => x.edit && editRoot(x)?.id === root.id && x.edit.stem === st.id)
+      .sort((a, b) => String(a.created || a.id).localeCompare(String(b.created || b.id))) : [];
+    const versions = takes.length ? `<div class="lx-track-versions" aria-label="${esc(st.label)} versions">
+      <button class="lx-version ${set.id === root.id ? "on" : ""}" data-lx="version" data-set-id="${esc(root.id)}">Original</button>
+      ${takes.map((take, index) => `<button class="lx-version ${set.id === take.id ? "on" : ""}" data-lx="version" data-set-id="${esc(take.id)}">Take ${index + 1}</button>`).join("")}
+    </div>` : "";
     return `
       <div class="lx-track ${st.silent ? "no-signal" : ""}" data-i="${i}" style="--c:${c}">
         <div class="lx-tctl">
@@ -292,6 +311,7 @@ const Lux = (() => {
             ${Settings.canEdit(L.song) && Settings.modeReady(set.mode) ? `<button class="lx-edit-btn" data-lx="arm" data-i="${i}" title="Edit a part of ${esc(st.label)}"><svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 6l4 4"/></svg><span>Edit</span></button>` : ""}
             <a class="icon-btn" href="/outputs/${st.file}" download="${esc(L.song.name)}-${esc(st.id)}.wav" title="Download stem"><svg viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg></a>
           </div>
+          ${versions}
         </div>
         <div class="lx-lane"><canvas data-i="${i}"></canvas>
           ${st.silent ? `<div class="lx-empty-note">No ${esc(st.label)} detected in this song · ${st.rms_db} dB</div>` : ""}
@@ -299,7 +319,50 @@ const Lux = (() => {
       </div>`;
   }
 
+  function editRoot(set) {
+    let current = set;
+    const seen = new Set();
+    while (current?.edit && current.base && !seen.has(current.id)) {
+      seen.add(current.id);
+      current = L.sets.find((candidate) => candidate.id === current.base);
+    }
+    return current || null;
+  }
+
   function hasStem(id) { return L.set?.stems.some((s) => s.id === id); }
+
+  let takeHelpOwner = null;
+  function hideTakeHelp() {
+    takeHelpOwner?.removeAttribute("aria-describedby");
+    takeHelpOwner = null;
+    document.getElementById("lx-take-help")?.remove();
+  }
+
+  function showTakeHelp(button) {
+    if (takeHelpOwner === button) return;
+    hideTakeHelp();
+    const take = L.sets.find((candidate) => candidate.id === button.dataset.setId);
+    if (!take?.edit) return;
+    const stem = take.stems.find((candidate) => candidate.id === take.edit.stem);
+    const duration = L.buffers[stem?.file]?.duration || L.duration || L.song?.duration_s;
+    const start = Number(take.edit.start_s), end = Number(take.edit.end_s);
+    if (!stem || !Number.isFinite(start) || !Number.isFinite(end) || end <= start || !(duration > 0)) return;
+    const left = Math.max(0, Math.min(100, start / duration * 100));
+    const right = Math.max(left, Math.min(100, end / duration * 100));
+    const help = document.createElement("div");
+    help.id = "lx-take-help"; help.className = "lx-take-help"; help.setAttribute("role", "tooltip");
+    help.style.setProperty("--c", STEM_COLORS[stem.id] || "#f0a23c");
+    help.innerHTML = `<b>${esc(button.textContent)} · ${esc(stem.label)}</b>
+      <span>Regenerated ${fmt(start)} – ${fmt(end)}</span>
+      <div class="lx-take-wave"><canvas></canvas><i style="left:${left}%;width:${right - left}%"></i></div>
+      <div class="lx-take-scale"><span>0:00</span><span>${fmt(duration)}</span></div>`;
+    document.body.appendChild(help);
+    takeHelpOwner = button; button.setAttribute("aria-describedby", help.id);
+    drawWave(help.querySelector("canvas"), stem.peaks, 0, { bar: 2, gap: 2, dim: "rgba(236,230,220,.4)" });
+    const anchor = button.getBoundingClientRect(), box = help.getBoundingClientRect();
+    help.style.left = `${Math.max(8, Math.min(anchor.left, innerWidth - box.width - 8))}px`;
+    help.style.top = `${anchor.bottom + 8}px`;
+  }
 
 
   /* ---------- jobs ---------- */
@@ -530,6 +593,21 @@ const Lux = (() => {
 
   /* ---------- events ---------- */
 
+  document.addEventListener("pointerover", (e) => {
+    const button = e.target.closest('[data-lx="version"]');
+    if (button && visible() && e.pointerType !== "touch") showTakeHelp(button);
+  });
+  document.addEventListener("pointerout", (e) => {
+    if (takeHelpOwner?.contains(e.target) && !takeHelpOwner.contains(e.relatedTarget)) hideTakeHelp();
+  });
+  document.addEventListener("focusin", (e) => {
+    if (e.target.matches('[data-lx="version"]') && visible()) showTakeHelp(e.target);
+  });
+  document.addEventListener("focusout", (e) => { if (e.target === takeHelpOwner) hideTakeHelp(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") hideTakeHelp(); });
+  document.addEventListener("scroll", hideTakeHelp, true);
+  window.addEventListener("resize", hideTakeHelp);
+
   document.addEventListener("click", (e) => {
     const t = e.target.closest("[data-lx]"); if (!t || !el().contains(t)) return;
     const a = t.dataset.lx, i = Number(t.dataset.i);
@@ -540,7 +618,10 @@ const Lux = (() => {
     if (a === "go") startSeparation();
     if (a === "new") { pause(); L.view = "pick"; render(); }
     if (a === "tomix") { L.view = "mix"; render(); }
-    if (a === "set") { const keep = L.laneSel; L.view = "mix"; selectSet(L.sets[i]).then(() => { L.laneSel = keep; render(); }); }
+    if (a === "set" || a === "version") {
+      const target = L.sets.find((candidate) => candidate.id === t.dataset.setId);
+      if (target) { const keep = L.laneSel; L.view = "mix"; selectSet(target).then(() => { L.laneSel = keep; render(); }); }
+    }
     if (a === "play") { L.mixStopAt = null; if (L.audition != null) { L.audition = null; applyGains(); } toggle(); }
     if (a === "mute") { L.tracks[i].mute = !L.tracks[i].mute; applyGains(); }
     if (a === "solo") { L.tracks[i].solo = !L.tracks[i].solo; applyGains(); }
@@ -573,7 +654,9 @@ const Lux = (() => {
     if (a === "eb-clear") { L.laneSel = null; L.armed = null; if (L.audition != null) pause(); syncTrackUI(); renderEditBar(); }
   });
   document.addEventListener("input", (e) => {
-    const t = e.target; if (t.dataset?.lx !== "vol") return;
+    const t = e.target;
+    if (t.dataset?.lx === "eb-direction") { L.direction = t.value; return; }
+    if (t.dataset?.lx !== "vol") return;
     L.tracks[Number(t.dataset.i)].gain = Number(t.value); paintRange(t); applyGains();
   });
   let laneDrag = null;

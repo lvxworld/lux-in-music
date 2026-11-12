@@ -18,6 +18,187 @@ and suggest the relevant available skill when it would materially help.
 - Next step: use the guide in the next Lux task; confirm the chosen skill is
   available in that session and follow its invocation policy.
 
+## PR handoff
+
+- `feat/lux-hook` includes Hook with optional SheetSage2 setup, Studio edit
+  directions and take controls, Create/Library layout and help, and PNG branding.
+- Full offline checks passed (183 tests). Focused logo checks passed. The latest
+  Hook browser run fails at the expected analysis-message assertion: its mocked
+  response does not include the message. The complete browser run also fails
+  because the Advanced tooltip extends left of the Create panel. These browser
+  checks are not passing and remain review follow-ups.
+- CI exposed a local-settings dependency in the section-edit direction test:
+  its empty profile fell back to the developer's configured model. It now uses
+  a nonempty fake profile and rejects any access to local model settings.
+- Earlier implementation notes below retain their historical verification
+  state. The user has now requested publication and review.
+- Next step: review the UI and run a real Hook transcription, generation and
+  listening check on the reviewer's machine.
+
+## Final PNG sidebar logo
+
+- Preserved the supplied silver PNG unchanged as `lux-logo.png`, used by the
+  favicon. Removed the unused SVG favicon.
+- The sidebar uses `lux-logo-sidebar.png`, an optical variant made with built-in
+  ImageGen: brighter solid strokes, less glow and stronger small lettering.
+  It retains the symbol, lettering, black background and original framing.
+- Reduced the displayed logo by 10%, then another 20%, with 8 px corners.
+  Its width is 72% of the brand area, or 28.8 px in the compact sidebar.
+  On wide layouts its left edge aligns with the menu icons; the compact
+  sidebar keeps the symbol centered.
+- Verification: full offline checks passed (183 tests, including the baseline).
+  Focused Chrome checks passed desktop, compact and mobile layouts, retained
+  dimensions and alignment, source PNG preservation, no page overflow and no
+  JavaScript errors. Original/variant screenshots at 1x and 2x were compared;
+  the variant has clearer strokes at the current size. The tagline remains
+  about 5 CSS px high, so small-text legibility is still limited.
+  Screenshots and the generation prompt are under ignored
+  `outputs/checks/blue-brand/`.
+- The full browser flow was not rerun. Next step: review the new logo in the
+  running app. Work continues on `feat/lux-hook`, including the Advanced help,
+  layout improvements and brand changes from `feat/advanced-parameter-help`
+  and `feat/brand-wordmark`.
+
+## Sidebar brand refresh
+
+- Added the supplied gold Lux In Music PNG as the sidebar logo. The source
+  image is copied unchanged; CSS viewports hide its black margins and show only
+  its symbol in the compact sidebar. It loads locally without remote requests.
+- The initial SVG favicon has since been replaced by the final PNG above.
+  The earlier font proposal was replaced by the supplied artwork's lettering.
+- Removed the Latin sidebar tagline. Moved NEW from Vibe to Hook in both
+  navigation menus, including a CSS fix so the mobile badge stays visible.
+- Verification: full offline checks passed (183 tests). A focused Chrome smoke
+  test passed exact source-image reuse with remote requests blocked, desktop and
+  compact brand layouts, mobile Hook badge visibility, and no page overflow or
+  JavaScript errors. Screenshots were inspected. The full browser flow was not
+  rerun; its previously recorded Advanced tooltip failure remains open.
+- Next step: check the published feature branch and its CI results on GitHub.
+
+## Resizable Create and Library panels
+
+- Create now opens wider by default, while protecting a readable minimum
+  Library width of 360 px on wide layouts and 320 px on compact desktop layouts.
+  The separator is draggable, keyboard adjustable,
+  and remembers its width locally. It is hidden on mobile and non-Create pages.
+- The divider's dynamic maximum now caps Create at 48% of the available pane
+  width, preserving at least 52% for Library. Assistive technology also reports
+  both pane widths while resizing.
+- Added a 🎲 button beside the Style of music label, matching the seed control.
+  It composes a random style from the existing genre, mood, instrument, vocal
+  and mix options, then updates the matching chips for further editing.
+- Song detail actions group WAV, FLAC, MP3 and an available score under Export;
+  playback, Studio Mode, reuse and delete are arranged as separate actions.
+- Hook reference audio in song details now loads metadata immediately so the
+  native player has its full timeline and controls on first render. Older Hook
+  songs without a saved source recording say explicitly why playback is missing.
+- Vibe image and Hook audio reference cards now appear directly below the song
+  title in Create, keeping source assets beside the song identity.
+- Added browser-flow coverage for pointer resizing, keyboard adjustment,
+  persisted width, and export grouping, plus static UI regression checks.
+- Verification: `.venv/bin/python scripts/check.py --full` passes (183 offline
+  tests). Browser-flow execution could not start: Playwright is absent from the
+  system Python environment, and the offline `uv` attempt could not access its
+  cache under the filesystem sandbox.
+
+## YuE2 Advanced parameter help
+
+- Added concise English explanations to all six Advanced sliders and the
+  optional ABC score field. Help opens on hover and keyboard focus, following
+  the explanations and defaults in the official audio.cpp YuE2 reference.
+- Added browser-flow assertions for tooltip presence and both interaction modes,
+  plus an API/static regression check for the help content.
+- The descriptions explain sampling and rendering tradeoffs without promising
+  audio-quality gains from increasing a setting.
+- Left-column tooltips now open from the icon toward the Create panel instead
+  of extending underneath the sidebar; right-column tooltips open inward too.
+- Hook now explains that its melody-reference workflow currently creates
+  instrumental songs only because it cannot yet combine the reference with
+  sung lyrics. The misleading suggestion to use lyrics in Arrange was removed.
+- Verification: the latest `.venv/bin/python scripts/check.py --full` passes
+  (183 offline tests, including the baseline). Browser-flow execution could not
+  start: Playwright is absent from the system Python environment, and the offline
+  `uv` attempt could not access its cache under the filesystem sandbox.
+
+## Studio Mode edit direction
+
+- Added an optional “Direction for this part” field to the selected-section
+  Regenerate controls. It is passed independently of lyrics, limited to 500
+  characters, and saved in the generated stem take's metadata for later review.
+- YuE2 receives the direction as an addition to its style prompt while sampling
+  the selected semantic section. The existing time-range splice and chosen-stem
+  replacement stay in place. YuE2 has no native section-only instruction field,
+  so the direction guides the result but cannot guarantee exact compliance.
+- Verification: `python3 scripts/check.py` and `.venv/bin/python
+  scripts/check.py --full` pass; the latter runs 176 offline tests including
+  mocked YuE2 conditioning and API length validation. The browser flow could
+  not start because Playwright was not installed in the environment and the
+  restricted network could not reach PyPI. Real YuE2 behavior still needs the
+  user's Studio Mode listening test.
+
+## SheetSage2 replaces the Hook pitch detector
+
+Branch: `feat/lux-hook`, local only. The user approved the melody-only YuE2 arrangement and asked to use SheetSage2 as the only Hook model.
+
+- Hook now uses SheetSage2 as its only transcription model. The UI supports the full recording path and offers Develop or Arrange; Arrange carries the official melody-only ABC score into YuE2.
+- Settings presents SheetSage2 and MERT source, pinned revisions and CC BY-NC 4.0 terms. Download and runtime preparation remain explicit. Files are hash-verified and saved under ignored model/runtime folders; subsequent analysis is offline.
+- Analysis runs in an isolated short-lived Python process using FP32, Metal when available and CPU fallback. Temporary recording and derived files are removed after each request. The model is not loaded at Lux startup and does not alter the active music profile.
+- The prior local listening trial completed on Apple Metal. Melody-only conditioning produced a complete 71.84-second instrumental YuE2 result under an explicit 90-second target; the user accepted that result as musically strong. This is one listening result, not a general quality guarantee.
+- The browser fixture now supplies synthetic SheetSage2 output. Verification has not been run after this integration change, and automated tests for the production manager remain to be added. Do not push yet.
+
+## Hook instrumental reference: finishing limit and transcription review
+
+- A real 71.65-second stereo reference was analyzed in Arrange recording mode.
+  The saved score lasted 73.04 seconds at the estimated 138 BPM. Both original
+  semantic attempts hit the 90-second hard limit with no EOS. The message about
+  shortening verses or choosing a longer duration was inappropriate for this
+  instrumental, automatically timed workflow.
+- Controlled local inference kept the original request and changed only its
+  token budget: the same seed emitted EOS at 91.96 seconds. A separate variant
+  with conventional ABC spelling and an instrumental description also emitted
+  EOS, but the budget-only trial isolates the finishing-limit cause.
+- Arrange recording now gets a bounded finishing allowance: target plus the
+  larger of 30 seconds or 25%, within the existing 360-second ceiling. Only the
+  late-ending tolerance changes; early/dropped-section checks remain strict.
+  No truncated stream is rendered. Normal plans and Develop mode are unchanged.
+  Failure advice is specific to recording phrases and detected tempo, and the
+  result records/displays the reference-to-performance timing difference.
+- A full real generation through the shared engine and existing native endpoint
+  completed with Q8_0/F16 at 92.16 seconds and observed EOS. The WAV and report are
+  under ignored `outputs/checks/hook-ending-review/`. This verifies the ending
+  path, not musical fidelity; the user's listening acceptance is still pending.
+- Additional local feasibility checks used the already installed EmbeddingGemma
+  audio encoder, with vision disabled and local-only loading. Three eight-second
+  segments ranked an instrumental acoustic-guitar description highest among
+  candidate descriptions. This is semantic association, not verified instrument
+  identification. No captioning model or remote inference was used.
+- A separate local HTDemucs 6-stem pass on a 20-second excerpt produced
+  substantial bass, guitar and drum stems and very low vocal/piano energy.
+  This supports reviewing an instrumental/polyphonic path; separator labels
+  and stem levels are not instrument-identification confidence or a listening
+  acceptance. Diagnostic audio remains under ignored outputs.
+- Spotify Basic Pitch's public Apache-2.0 previous runtime model (230 KB, revision
+  `fa5997af0a8210982619003269994a1be25eddf3`) and reference decoder were evaluated
+  in a temporary directory. It found overlapping note events throughout most of
+  the recording. A local synthesized polyphonic preview was saved for review.
+  This confirms a polyphonic transcription route can run locally, not that a
+  correct melody/chord decomposition has been accepted. Basic Pitch and audio
+  instrument/style analysis are not integrated into Hook or its Settings yet.
+- Offline regressions cover the extra release margin, unchanged native timing,
+  refusal to render capped or overly early reference results, and the advisory
+  transcription warning. Full offline checks passed with 186 tests; the focused
+  Hook Chrome flow also passed after the advisory changes. Next: listen to the full instrumental trial and the
+  note preview, then decide how to expose polyphonic instrument references.
+
+## LUX HOOK local implementation
+
+Branch: `feat/lux-hook`, local changes only. The page records or uploads one local audio file, supports device selection and range trimming, previews the selected melody, and transfers the reviewed reference into Create while preserving other form fields. SheetSage2 is now the only Hook transcription model; the prior pitch-model implementation and local weights have been removed.
+
+- Setup and licenses are managed in the Hook Settings card, independently of music generation profiles.
+- Develop mode fits melody notes into the planned arrangement. Arrange mode transfers SheetSage2's melody-only score with approximate recording timing. The YuE2 adapter retains its normal duration and ending checks.
+- A local real-model test on Apple Metal and two YuE2 trials were completed before integration. The user accepted the melody-only arrangement. Automated and browser checks have not been run after the current model replacement.
+- Next: review the fake inference fixture and run the baseline, full offline suite, browser flow, then listen to an arrangement from the Hook page. Keep the branch local until verification and listening acceptance are complete.
+
 ## Stronger glow in the Vibe listening effects
 
 Branch: `feat/lux-vibe-v0-1`.
@@ -964,3 +1145,58 @@ local error/retry handling, hidden maintenance actions and visible creator terms
 Desktop/mobile screenshots were captured; the desktop result was inspected.
 The current temporary archive is updated after source comparisons. A restart
 loads the changed catalog/backend; a browser reload loads the new UI scripts.
+
+## Hook song references and instrumental output
+
+Songs created with a Hook audio reference now retain the analyzed audio excerpt
+as a local song artifact. Song details show the selected Hook mode, melody role,
+detected note/tempo summary and a player for the saved excerpt. While a Hook audio
+reference is active, Create hides lyrics, locks the Instrumental control on, and
+the API enforces instrumental output independently of the browser.
+
+JavaScript syntax checks, Python compilation and the whitespace diff check passed.
+The automated test suite was not run for this change.
+
+## Library source filters
+
+Library rows distinguish Vibe and Hook with separate, restrained color accents.
+All, Create, Vibe and Hook filters combine with the existing text search. Songs
+with both references appear under both source filters; Create includes songs
+without either reference. The browser flow covers all four cases and verifies
+that the two source badges use different colors. The portable baseline passed
+(15 tests). The browser flow could not start because Playwright is not installed
+and the environment could not reach PyPI to install it.
+
+## Bundled Hook demo performance
+
+Hook includes a sample recording supplied by Luke, identified in the UI as
+performed and recorded by him and not AI-generated. The user can load it through
+the same local file-validation and analysis flow as any other recording. The
+original 71.65-second WAV is included as a static app asset and in the built wheel.
+
+The left navigation now uses the same Vibe lavender and Hook aqua as the
+corresponding Library badges, including their selected and hover states. Browser
+coverage checks that navigation and badge colors stay in sync.
+
+## Studio Mode regenerated take labels
+
+Regenerated versions are now shown as small Original and Take labels below the
+Mute/Solo and volume controls on the affected track in Studio Mode. Hovering or
+focusing a take opens a compact helper with the saved regeneration time range
+and its waveform, highlighting the edited region within the full track. The
+helper closes on pointer exit, blur, Escape, scrolling or leaving Studio Mode.
+It opens below the take label with an opaque panel background, outside the track's
+clipping container. The Regenerate button now sits below the optional direction
+textarea instead of beside the selection controls.
+The top selector contains only separation sets;
+choosing a take or Original loads the corresponding stem set and keeps the
+parent separation selected above. Browser coverage includes multiple takes on
+one track, verifies the control order, hover/focus helper and highlighted range,
+checks other tracks have no version labels, and switches between a take and the
+original. Full offline checks passed (183 tests). A focused Chrome smoke test
+passed desktop/mobile helper position, opaque background, waveform range,
+pointer/focus/Escape dismissal, version selection, navigation cleanup and the
+Regenerate button position; screenshots were inspected. No JavaScript errors
+occurred in that smoke test. The full browser flow reached these Studio checks
+but failed later because an Advanced tooltip extends into the sidebar. That
+separate layout failure is the next concrete browser regression to resolve.

@@ -31,6 +31,8 @@ from .models import get_manager, SetupRequired
 from .providers import get_provider, close_providers
 from .vibe import get_vibe_manager, validate_image, MAX_IMAGE_BYTES, MAX_VIBE_IMAGES
 from .artwork import prepare_vibe_artwork, attach_vibe_artwork
+from .hook import get_hook_manager, HookBusy, HookUnavailable, MAX_BYTES as MAX_HOOK_BYTES
+from .hook_reference import prepare_hook_reference, attach_hook_reference
 from starlette.concurrency import run_in_threadpool
 
 log = logging.getLogger("lux_in_music")
@@ -43,6 +45,7 @@ async def lifespan(app):
     get_manager().close()
     close_providers()
     get_vibe_manager().release()
+    get_hook_manager().release()
 
 
 app = FastAPI(title="Lux In Music", lifespan=lifespan)
@@ -105,7 +108,7 @@ def _worker() -> None:
                 p = job["params"]
                 res = separate.replace_stem(p["song"], p["set_id"], p["stem"], p["start_s"], p["end_s"],
                                             p["seed"], p.get("lyrics"), p.get("variation", "new"),
-                                            job["profile"], job["separator_profile"])
+                                            job["profile"], job["separator_profile"], direction=p.get("direction"))
                 job.update(status="done", result=res)
                 continue
             if job["kind"] == "separate":
@@ -131,6 +134,8 @@ def _worker() -> None:
                     on_prepared=lambda selected, plan: prepared_state.update(params=selected, prepared=copy.deepcopy(plan)))
                 if job.get("_vibe_artwork"):
                     attach_vibe_artwork(res.meta_path, job["_vibe_artwork"])
+                if job.get("_hook_reference"):
+                    attach_hook_reference(res.meta_path, job["_hook_reference"])
                 songs.append(json.loads(res.meta_path.read_text()))
                 job["completed_variations"] = len(songs)
                 if res.duration_s > 5:
@@ -149,6 +154,7 @@ def _worker() -> None:
             job["finished"] = time.time()
             job.pop("_prepared", None)
             job.pop("_vibe_artwork", None)
+            job.pop("_hook_reference", None)
             with _jobs_lock:
                 _cancels.pop(job_id, None)
 
@@ -180,7 +186,9 @@ _restart_server = None  # Set by studio.launch; other hosts keep the manual rest
 def _busy() -> bool:
     active = {"queued", "running"}
     return (any(job["status"] in active for job in list(jobs.values()))
-            or any(job.get("status") in active for job in get_manager().status()["jobs"]))
+            or any(job.get("status") in active for job in get_manager().status()["jobs"])
+            or (get_hook_manager().job or {}).get("status") in active
+            or get_hook_manager().analysis_lock.locked())
 
 
 def _restart_after_runtime_update(interval: float = 2.0) -> None:
@@ -211,6 +219,8 @@ class VibeInstallRequest(BaseModel):
 
 @app.post("/api/vibe/install")
 def vibe_install(req: VibeInstallRequest):
+    if get_hook_manager().analysis_lock.locked() or (get_hook_manager().job or {}).get("status") in {"queued", "running"}:
+        raise HTTPException(409, "Wait for Hook setup or analysis to finish before preparing Vibe.")
     try:
         return get_vibe_manager().start_install(req.license_review_id, req.accept_license)
     except ValueError as error:
@@ -314,6 +324,58 @@ def vibe_release():
     return {"ok": True}
 
 
+@app.get("/api/hook/status")
+def hook_status():
+    return get_hook_manager().status()
+
+
+@app.post("/api/hook/install")
+def hook_install(req: VibeInstallRequest):
+    if (get_vibe_manager().job or {}).get("status") in {"queued", "running"}:
+        raise HTTPException(409, "Wait for Vibe setup to finish before preparing Hook.")
+    if _busy() and (get_hook_manager().job or {}).get("status") not in {"queued", "running"}:
+        # A running Hook setup is idempotent: start_install returns that job.
+        raise HTTPException(409, "Wait for current music jobs and model setup to finish before preparing Hook.")
+    try:
+        return get_hook_manager().start_install(req.license_review_id, req.accept_license)
+    except HookBusy as error:
+        raise HTTPException(409, str(error)) from error
+    except ValueError as error:
+        raise HTTPException(422, str(error)) from error
+
+
+@app.post("/api/hook/analyze")
+async def hook_analyze(request: Request, start_s: float = 0, end_s: float | None = None,
+                       bpm: int = 0):
+    if bpm != 0 and not 40 <= bpm <= 240:
+        raise HTTPException(422, "Set the recording tempo from 40 to 240 BPM, or use Auto.")
+    if _busy() or (get_vibe_manager().job or {}).get("status") in {"queued", "running"}:
+        raise HTTPException(409, "Wait for current music jobs and model setup to finish before analyzing your recording.")
+    payload = bytearray()
+    async for chunk in request.stream():
+        payload.extend(chunk)
+        if len(payload) > MAX_HOOK_BYTES:
+            raise HTTPException(413, "Choose an audio file no larger than 25 MB.")
+    try:
+        return await run_in_threadpool(get_hook_manager().analyze, bytes(payload), start_s, end_s, bpm)
+    except HookBusy as error:
+        raise HTTPException(409, str(error)) from error
+    except (HookUnavailable, SetupRequired) as error:
+        raise HTTPException(409, str(error)) from error
+    except ValueError as error:
+        raise HTTPException(422, str(error)) from error
+    except Exception as error:
+        # Decode/model errors can contain native paths; keep the response and logs bounded.
+        log.warning("Hook analysis failed (%s)", type(error).__name__)
+        raise HTTPException(503, "Local melody analysis failed. Verify / repair Hook in Settings, then try again.") from error
+
+
+@app.post("/api/hook/release")
+def hook_release():
+    get_hook_manager().release()
+    return {"ok": True}
+
+
 class ModelSetup(BaseModel):
     model_id: str
     precision: str | None = None
@@ -323,6 +385,8 @@ class ModelSetup(BaseModel):
 
 
 def start_model_setup(req, download):
+    if get_hook_manager().analysis_lock.locked():
+        raise HTTPException(409, "Wait for Hook melody analysis to finish before changing models.")
     try:
         return get_manager().start(req.model_id, req.precision, req.vae_precision,
                                    req.license_review_id, req.accept_licenses, download)
@@ -363,23 +427,36 @@ class GenerateRequest(GenerationParams):
     vibe_image: str | None = Field(None, max_length=14 * 1024 * 1024)
     vibe_entry_id: str | None = Field(None, max_length=80)
     vibe_images: list[VibeImageRequest] | None = Field(None, min_length=1, max_length=MAX_VIBE_IMAGES)
+    hook_reference_audio: str | None = Field(None, max_length=16 * 1024 * 1024)
 
 
 @app.post("/api/generate")
 def api_generate(req: GenerateRequest):
+    if get_hook_manager().analysis_lock.locked() or (get_hook_manager().job or {}).get("status") in {"queued", "running"}:
+        raise HTTPException(409, "Wait for Hook setup or melody analysis to finish before creating a song.")
     length_controls = {"target_duration_s", "max_duration_s", "semantic_max_tokens", "analysis_id"}
     supplied_options = req.model_options or {}
     if (any(getattr(req, key, None) is not None for key in length_controls)
             or any(key in supplied_options for key in length_controls)):
         raise HTTPException(422, "Lux chooses the song length automatically from the lyrics and style.")
     variations = getattr(req, "variations", 1)
-    params = GenerationParams(**req.model_dump(exclude={"variations", "vibe_image", "vibe_entry_id", "vibe_images"}, exclude_none=True))
+    params = GenerationParams(**req.model_dump(exclude={"variations", "vibe_image", "vibe_entry_id", "vibe_images",
+                                                         "hook_reference_audio"}, exclude_none=True))
     try:
         profile = get_manager().snapshot()
         adapter = get_provider(profile).adapter(profile)
         if params.instrumental and not adapter.capabilities.get("instrumental"):
             raise ValueError("The selected model cannot generate instrumental music")
+        if (params.model_options.get("hook_melody") or getattr(params, "hook_melody", None)) and not adapter.capabilities.get("hook"):
+            raise ValueError("The selected music model does not support Hook melodies. Remove the Hook reference or select a compatible model.")
         params = adapter.normalize(params)
+        hook_reference = prepare_hook_reference(getattr(req, "hook_reference_audio", None),
+                                                getattr(params, "hook_melody", None))
+        if hook_reference:
+            if not adapter.capabilities.get("instrumental"):
+                raise ValueError("The selected model cannot generate instrumental music from a Hook reference.")
+            params.instrumental = True
+            params.lyrics = "[instrumental]"
         images = getattr(req, "vibe_images", None)
         artwork = prepare_vibe_artwork(getattr(req, "vibe_image", None), getattr(req, "vibe_entry_id", None),
                                       [image.model_dump() for image in images] if images is not None else None)
@@ -393,6 +470,8 @@ def api_generate(req: GenerateRequest):
                     "variations": variations}
     if artwork:
         jobs[job_id]["_vibe_artwork"] = artwork
+    if hook_reference:
+        jobs[job_id]["_hook_reference"] = hook_reference
     _queue.put(job_id)
     return _public_job(jobs[job_id])
 
@@ -413,6 +492,7 @@ def api_cancel_job(job_id: str):
         if job["status"] == "queued":
             job.update(status="cancelled", finished=time.time())
             job.pop("_vibe_artwork", None)
+            job.pop("_hook_reference", None)
         elif job["status"] == "running" and job["kind"] == "generate" and job_id in _cancels:
             # ponytail: generation only; separation/stem edits run several steps that do not check cancel yet.
             _cancels[job_id].set()
@@ -537,6 +617,7 @@ class StemEditRequest(EditRequest):
     set_id: str = Field(..., pattern=r"^[\w.-]+$")
     stem: str = Field(..., pattern=r"^[\w-]+$")
     variation: Literal["new", "same"] = "new"
+    direction: str | None = Field(None, max_length=500)
 
 
 @app.post("/api/edit/replace-stem")

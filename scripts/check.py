@@ -167,7 +167,8 @@ def main() -> int:
                     if loader.errors or not suite.countTestCases():
                         raise ValueError(f"Cannot verify requirement {item['id']}: {loader.errors}")
                     selectors.extend(item["tests"])
-            run_tests(list(dict.fromkeys([*selectors, "tests.test_app.RequestBoundaryTests", "tests.test_vibe"])))
+            run_tests(list(dict.fromkeys([*selectors, "tests.test_app.RequestBoundaryTests", "tests.test_vibe",
+                                          "tests.test_edit"])))
             for item in report["requirements"]:
                 if item["status"] == "implemented":
                     report["checks"].append({"name": item["id"], "passed": True})

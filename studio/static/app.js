@@ -20,12 +20,18 @@ const CHIPS = {
   Mix: ["polished demo mix", "lo-fi tape", "wide stereo", "live band feel", "radio ready"],
 };
 const SLIDERS = [
-  { id: "num_inference_steps", label: "Steps", min: 2, max: 32, step: 1, def: 8 },
-  { id: "guidance_scale", label: "Guidance", min: 0.8, max: 3, step: 0.01, def: null, defLabel: "auto" },
-  { id: "semantic_temperature", label: "Temperature", min: 0.5, max: 1.5, step: 0.05, def: 1.0 },
-  { id: "semantic_top_p", label: "Top-p", min: 0.5, max: 1, step: 0.01, def: 0.95 },
-  { id: "semantic_top_k", label: "Top-k", min: 10, max: 300, step: 5, def: 100 },
-  { id: "semantic_repetition_penalty", label: "Repetition", min: 1, max: 1.6, step: 0.01, def: 1.2 },
+  { id: "num_inference_steps", label: "Steps", min: 2, max: 32, step: 1, def: 8,
+    help: "How many passes YuE2 uses to turn the music tokens into sound. More steps take longer; extra steps do not guarantee a better result." },
+  { id: "guidance_scale", label: "Guidance", min: 0.8, max: 3, step: 0.01, def: null, defLabel: "auto",
+    help: "How strongly YuE2 applies your style and lyrics when choosing music tokens. Auto uses 1.01 for Direct and 1.0 for Melody or Full score." },
+  { id: "semantic_temperature", label: "Temperature", min: 0.5, max: 1.5, step: 0.05, def: 1.0,
+    help: "Controls variety in YuE2's music-token choices. Lower is more predictable; higher can make the result more varied." },
+  { id: "semantic_top_p", label: "Top-p", min: 0.5, max: 1, step: 0.01, def: 0.95,
+    help: "Keeps likely choices until their combined probability reaches this value. Lower is more restrictive; higher leaves more options." },
+  { id: "semantic_top_k", label: "Top-k", min: 10, max: 300, step: 5, def: 100,
+    help: "Limits each choice to the K most likely music tokens. Lower is more restrictive; higher leaves more options." },
+  { id: "semantic_repetition_penalty", label: "Repetition", min: 1, max: 1.6, step: 0.01, def: 1.2,
+    help: "Discourages reuse of recent music tokens. Higher values apply a stronger penalty and may weaken recurring musical patterns." },
 ];
 
 /* ---------- demo templates ---------- */
@@ -152,7 +158,7 @@ function setupGenreTemplates() {
 
 /* ---------- state ---------- */
 
-const state = { library: [], jobs: [], current: null, adv: {}, cot: "off", variations: 1, jobsAt: 0, submitting: false };
+const state = { library: [], jobs: [], current: null, adv: {}, cot: "off", variations: 1, jobsAt: 0, submitting: false, libraryFilter: "all" };
 const audio = $("audio");
 
 /* ---------- generative covers ---------- */
@@ -319,6 +325,20 @@ function setupForm() {
     `<div class="chip-group"><span class="gname">${g}</span>${list.map((c) => `<button type="button" class="chip" data-c="${esc(c)}">${esc(c)}</button>`).join("")}</div>`).join("");
   $("chips").onclick = (e) => { const c = e.target.dataset.c; if (c) toggleStyleTag(c); };
   $("style").oninput = syncChips; syncChips();
+  $("style-random").onclick = () => {
+    const pick = items => items[Math.floor(Math.random() * items.length)];
+    const sample = (items, count) => {
+      const pool = [...items], chosen = [];
+      while (chosen.length < count) chosen.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+      return chosen;
+    };
+    const mood = sample(CHIPS.Mood, 1 + Math.floor(Math.random() * 2));
+    const instruments = sample(CHIPS.Instr, 2 + Math.floor(Math.random() * 2));
+    const parts = ["English", pick(CHIPS.Genre), ...mood, `${70 + Math.floor(Math.random() * 81)} BPM`, ...instruments, pick(CHIPS.Vocal), pick(CHIPS.Mix)];
+    $("style").value = parts.join(", ");
+    syncChips();
+    $("style").focus();
+  };
   $("style-clear").onclick = () => { window.Vibe?.clearCreateReference(); $("style").value = "English, "; syncChips(); $("style").focus(); };
 
   segmented("cot", (v) => {
@@ -331,7 +351,7 @@ function setupForm() {
   $("dice").onclick = () => { $("seed").value = Math.floor(Math.random() * 2 ** 31); };
 
   $("sliders").innerHTML = SLIDERS.map((s) => `
-    <div class="slider"><div class="label-row"><label for="${s.id}">${s.label}</label><span class="value default" id="${s.id}-v">${s.defLabel || s.def}</span></div>
+    <div class="slider"><div class="label-row"><div class="slider-name"><label for="${s.id}">${s.label}</label><button type="button" class="advanced-help" aria-label="Help for ${s.label}"><span aria-hidden="true">i</span><span role="tooltip">${esc(s.help)}</span></button></div><span class="value default" id="${s.id}-v">${s.defLabel || s.def}</span></div>
     <input type="range" id="${s.id}" min="${s.min}" max="${s.max}" step="${s.step}" value="${s.def ?? s.min}"></div>`).join("");
   for (const s of SLIDERS) {
     const el = $(s.id); paintRange(el);
@@ -341,6 +361,69 @@ function setupForm() {
 
   $("form").onsubmit = submit;
   updateGoLabel();
+}
+
+function setupPanelResizer() {
+  const app = document.querySelector(".app"), create = document.querySelector(".create");
+  const sidebar = document.querySelector(".sidebar"), handle = $("panel-resizer");
+  if (!app || !create || !sidebar || !handle) return;
+  const narrow = () => matchMedia("(max-width: 1180px)").matches;
+  const minCreate = () => narrow() ? 340 : 400;
+  const minLibrary = () => narrow() ? 320 : 360;
+  const trackWidth = () => app.clientWidth - sidebar.getBoundingClientRect().width - handle.offsetWidth;
+  const maximum = () => Math.max(minCreate(), Math.min(Math.floor(trackWidth() * 0.48), trackWidth() - minLibrary()));
+  const clamp = width => Math.round(Math.min(maximum(), Math.max(minCreate(), width)));
+  function apply(width, persist = false) {
+    width = clamp(width);
+    app.style.setProperty("--create-width", `${width}px`);
+    handle.setAttribute("aria-valuemin", String(minCreate()));
+    handle.setAttribute("aria-valuemax", String(maximum()));
+    handle.setAttribute("aria-valuenow", String(width));
+    handle.setAttribute("aria-valuetext", `Create ${width} pixels; Library ${Math.round(trackWidth() - width)} pixels`);
+    if (persist) {
+      try { localStorage.setItem("lux.createWidth", String(width)); } catch (_) {}
+    }
+    return width;
+  }
+  let initial = create.getBoundingClientRect().width;
+  try { initial = Number(localStorage.getItem("lux.createWidth")) || initial; } catch (_) {}
+  apply(initial);
+
+  let dragging = false;
+  const setFromPointer = event => apply(event.clientX - app.getBoundingClientRect().left - sidebar.getBoundingClientRect().width);
+  handle.addEventListener("pointerdown", event => {
+    if (event.button !== 0) return;
+    dragging = true;
+    handle.setPointerCapture(event.pointerId);
+    document.body.classList.add("panel-resizing");
+    setFromPointer(event);
+    event.preventDefault();
+  });
+  handle.addEventListener("pointermove", event => { if (dragging) setFromPointer(event); });
+  const stopDragging = () => {
+    if (!dragging) return;
+    dragging = false;
+    document.body.classList.remove("panel-resizing");
+    apply(create.getBoundingClientRect().width, true);
+  };
+  handle.addEventListener("pointerup", stopDragging);
+  handle.addEventListener("pointercancel", stopDragging);
+  handle.addEventListener("keydown", event => {
+    const current = create.getBoundingClientRect().width;
+    const step = event.shiftKey ? 80 : 24;
+    let next;
+    if (event.key === "ArrowLeft") next = current - step;
+    else if (event.key === "ArrowRight") next = current + step;
+    else if (event.key === "Home") next = minCreate();
+    else if (event.key === "End") next = maximum();
+    else return;
+    event.preventDefault();
+    apply(next, true);
+  });
+  window.addEventListener("resize", () => {
+    if (!handle.getClientRects().length || !create.getClientRects().length) return;
+    apply(create.getBoundingClientRect().width);
+  });
 }
 
 function segmented(id, onChange) {
@@ -365,7 +448,8 @@ function updateSongLengthUI() {
   const cap = Settings.capability(), supported = Boolean(cap.duration_analysis);
   $("duration-hint").closest(".field").hidden = !supported;
   if (supported) {
-    $("duration-hint").textContent = "Lux analyzes your lyrics, style and tempo when you click Create, then chooses a song length and prepares the arrangement before generating audio. Planning takes extra model processing time. The final performance may be shorter or vary from the plan. If the model cannot fit a complete arrangement, Lux explains what to shorten.";
+    const hook = window.Hook?.options().hook_melody;
+    $("duration-hint").textContent = hook?.mode === "arrange" ? "Hook follows the recorded melody and its approximate length, rounded to musical bars with a short ending. A new instrumental performance is generated." : hook ? "Lux plans an instrumental song from your style, then fits your Hook melody into the chorus or an interior lead phrase. Tempo and rhythm adapt to the song. Planning adds processing time." : "Lux analyzes your lyrics, style and tempo when you click Create, then chooses a song length and prepares the arrangement before generating audio. Planning takes extra model processing time. The final performance may be shorter or vary from the plan. If the model cannot fit a complete arrangement, Lux explains what to shorten.";
   }
 }
 function styleTags() { return $("style").value.split(",").map((t) => t.trim()).filter(Boolean); }
@@ -408,9 +492,10 @@ async function submit(e) {
   $("go").disabled = true;
   try {
     const vibeReference = await window.Vibe?.generationReference() || {};
+    const hookReference = await window.Hook?.generationReference() || {};
     const seed = random ? Math.floor(Math.random() * 2 ** 31) : seed0;
     const r = await fetch("/api/generate", { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...base, ...vibeReference, seed, variations: state.variations }) });
+      body: JSON.stringify({ ...base, ...hookReference, ...vibeReference, seed, variations: state.variations }) });
     if (!r.ok) {
       const d = (await r.json()).detail;
       $("form-error").textContent = Array.isArray(d) ? d.map((x) => `${x.loc.slice(1).join(".") || "request"}: ${x.msg}`).join("\n") : String(d);
@@ -423,6 +508,7 @@ async function submit(e) {
 function loadIntoForm(p) {
   window.Vibe?.clearCreateReference();
   p = { ...p, ...(p.model_options || {}) };
+  window.Hook?.restoreReference(p);
   $("title").value = p.title || "";
   $("instrumental").checked = Boolean(p.instrumental);
   if (!p.instrumental) $("lyrics").value = p.lyrics || "";
@@ -454,11 +540,23 @@ function render() {
   const rank = { running: 0, queued: 1, error: 2 };
   const active = state.jobs.filter((j) => !["done", "cancelled"].includes(j.status) && (j.kind || "generate") === "generate")
     .sort((a, b) => rank[a.status] - rank[b.status] || a.created - b.created);
-  const songs = state.library.filter((s) => !q || [s.title, s.params.style, s.params.lyrics].join(" ").toLowerCase().includes(q));
+  const songs = state.library.filter((s) => {
+    const hasVibe = Boolean(s.vibe), hasHook = Boolean(s.params.hook_melody);
+    const sourceMatches = state.libraryFilter === "all" ||
+      state.libraryFilter === "create" && !hasVibe && !hasHook ||
+      state.libraryFilter === "vibe" && hasVibe ||
+      state.libraryFilter === "hook" && hasHook;
+    return sourceMatches && (!q || [s.title, s.params.style, s.params.lyrics].join(" ").toLowerCase().includes(q));
+  });
+  for (const button of document.querySelectorAll("[data-library-filter]")) {
+    const selected = button.dataset.libraryFilter === state.libraryFilter;
+    button.classList.toggle("on", selected);
+    button.setAttribute("aria-pressed", String(selected));
+  }
   $("lib-count").textContent = state.library.length;
 
   if (!active.length && !songs.length) {
-    $("list").innerHTML = q ? `<div class="empty"><h3>No matches</h3>Try another search.</div>` :
+    $("list").innerHTML = q || state.libraryFilter !== "all" || state.library.length ? `<div class="empty"><h3>No matching songs</h3>Try another search or source filter.</div>` :
       `<div class="empty"><div class="big"><svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>
        <h3>Your first song is one click away</h3>Write some lyrics, pick a style, hit Create.</div>`;
     return;
@@ -485,7 +583,7 @@ function render() {
   const songRows = songs.map((s) => `
     <div class="song ${state.current?.name === s.name ? "playing" : ""}" data-name="${esc(s.name)}">
       <div class="cover"><img src="${songCover(s, 128)}" alt=""><div class="ov"><svg viewBox="0 0 24 24">${state.current?.name === s.name && !audio.paused ? ICON.pause : ICON.play}</svg></div><span class="dur">${fmt(s.duration_s)}</span></div>
-      <div class="s-main"><div class="s-title">${esc(s.title)}${s.vibe ? `<span class="badge">Vibe · ${vibeImageCount(s) > 1 ? `${vibeImageCount(s)} images` : "Image inspired"}</span>` : ""}${cotBadge(s.params.cot)}${endingBadge(s)}${s.edit ? `<span class="badge">edit ${fmt(s.edit.start_s)}–${fmt(s.edit.end_s)}</span>` : ""}</div>
+      <div class="s-main"><div class="s-title">${esc(s.title)}${s.params.hook_melody ? '<span class="badge badge-hook">Hook · Recorded melody</span>' : ''}${s.vibe ? `<span class="badge badge-vibe">Vibe · ${vibeImageCount(s) > 1 ? `${vibeImageCount(s)} images` : "Image inspired"}</span>` : ""}${cotBadge(s.params.cot)}${endingBadge(s)}${s.edit ? `<span class="badge">edit ${fmt(s.edit.start_s)}–${fmt(s.edit.end_s)}</span>` : ""}</div>
         <div class="s-tags">${tagsHtml(s.params.style)}</div>
         <div class="s-sub">seed ${s.params.seed} · made in ${fmt(s.elapsed_s)} · ${esc((s.created || "").replace("T", " ").slice(0, 16))}</div></div>
       <canvas class="mini-wave"></canvas>
@@ -525,6 +623,9 @@ $("list").onclick = async (e) => {
   togglePlay(s);
 };
 $("search").oninput = render;
+for (const button of document.querySelectorAll("[data-library-filter]")) {
+  button.addEventListener("click", () => { state.libraryFilter = button.dataset.libraryFilter; render(); });
+}
 
 
 /* ---------- jobs polling ---------- */
@@ -744,15 +845,23 @@ async function openDrawer(s) {
     <div class="d-body">
       <div><h2 class="d-title">${esc(s.title)}</h2><div class="d-style">${esc(p.style)}</div></div>
       ${s.generation?.message ? `<p class="hint">${esc(s.generation.message)}</p>` : endingBadge(s)}
+      ${s.params.hook_melody ? `<div class="d-sec d-hook-audio"><h4>Hook audio reference</h4><div class="kv"><div><span>How Lux used it</span><b>${s.params.hook_melody.mode === 'arrange' ? 'Arrange this recording' : 'Develop into a song'}</b></div><div><span>Use the melody as</span><b>${s.params.hook_melody.target === 'vocal' ? 'Vocal melody' : 'Instrumental hook'}</b></div><div><span>Detected melody</span><b>${s.params.hook_melody.notes.length} notes · ${s.params.hook_melody.bpm} BPM</b></div></div>${s.artifacts?.hook_reference_audio ? `<audio class="hook-reference-player" controls preload="metadata" src="/outputs/${encodeURIComponent(s.artifacts.hook_reference_audio)}" aria-label="Original Hook audio reference"></audio>` : '<p class="hint">The original recording was not saved with this song, so it is unavailable here.</p>'}</div>` : ''}
       ${s.vibe ? `<div class="d-sec"><h4>Image inspiration · Lux Vibe</h4><p class="hint">${vibeImageCount(s) > 1 ? `${vibeImageCount(s)} images inspired this song’s musical direction. They are saved locally with its composite cover and listening gallery.` : "This song’s musical direction was inspired by an image. The image is saved locally as its cover."}</p><button class="btn" data-act="dimage">${vibeImageCount(s) > 1 ? "View inspiration gallery" : "View inspiration image"}</button></div>` : ""}
       <div class="d-actions">
-        <button class="btn primary" data-act="dplay"><svg viewBox="0 0 24 24">${ICON.play}</svg>Play</button>
-        <button class="btn lux-cta" data-act="dlux"><svg viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg>Open in Studio Mode</button>
-        <button class="btn" data-act="dreuse"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 0114-5.3L20 9M20 4v5h-5"/></svg>Reuse settings</button>
-        <a class="btn" href="/outputs/${encodeURIComponent(s.name)}.wav" download><svg viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>WAV</a>
-        ${["flac", "mp3"].map((f) => `<a class="btn" href="/api/export/${encodeURIComponent(s.name)}?format=${f}" download><svg viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>${f.toUpperCase()}</a>`).join("")}
-        ${s.artifacts?.score ? `<a class="btn" href="/outputs/${encodeURIComponent(s.artifacts.score)}" download><svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/></svg>Score</a>` : ""}
-        <button class="btn danger" data-act="ddelete"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>Delete</button>
+        <div class="d-primary-actions">
+          <button class="btn primary" data-act="dplay"><svg viewBox="0 0 24 24">${ICON.play}</svg>Play</button>
+          <button class="btn lux-cta" data-act="dlux"><svg viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg>Open in Studio Mode</button>
+        </div>
+        <button class="btn d-reuse" data-act="dreuse"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 0114-5.3L20 9M20 4v5h-5"/></svg>Reuse settings</button>
+        <section class="d-export-group" aria-labelledby="d-export-title">
+          <h4 id="d-export-title">Export</h4>
+          <div class="d-export-actions">
+            <a class="btn" href="/outputs/${encodeURIComponent(s.name)}.wav" download><svg viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>WAV</a>
+            ${["flac", "mp3"].map((f) => `<a class="btn" href="/api/export/${encodeURIComponent(s.name)}?format=${f}" download><svg viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>${f.toUpperCase()}</a>`).join("")}
+            ${s.artifacts?.score ? `<a class="btn" href="/outputs/${encodeURIComponent(s.artifacts.score)}" download><svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/></svg>Score</a>` : ""}
+          </div>
+        </section>
+        <button class="btn danger d-delete" data-act="ddelete"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>Delete</button>
       </div>
       <p class="error" id="d-error" role="alert"></p>
       ${p.instrumental ? '<div class="d-sec"><h4>Lyrics</h4><p class="hint">Instrumental · no vocals requested</p></div>' : p.lyrics?.trim() ? `<div class="d-sec"><h4>Lyrics</h4><div class="d-lyrics">${lyr}</div></div>` : ""}
@@ -801,6 +910,7 @@ async function health() {
 /* ---------- boot ---------- */
 
 setupForm();
+setupPanelResizer();
 setupDemos();
 setupGenreTemplates();
 loadLibrary();

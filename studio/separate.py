@@ -148,7 +148,8 @@ MARGIN_S = 3.0  # context around the selection given to the separator
 
 
 def replace_stem(song: str, set_id: str, stem_id: str, start_s: float, end_s: float, seed: int,
-                 lyrics: str | None = None, variation: str = "new", profile=None, separator_profile=None) -> dict:
+                 lyrics: str | None = None, variation: str = "new", profile=None,
+                 separator_profile=None, direction: str | None = None) -> dict:
     """Regenerate [start_s, end_s) of one stem: new take of the song, separated, only that stem swapped in."""
     from . import edit  # local import: edit imports engine only, no cycle at module load
 
@@ -160,7 +161,8 @@ def replace_stem(song: str, set_id: str, stem_id: str, start_s: float, end_s: fl
         raise ValueError(f"no stem {stem_id} in this set")
 
     t0 = time.time()
-    take, info = edit.render_section(song, start_s, end_s, seed, lyrics, variation, profile)   # 48 kHz composite
+    take, info = edit.render_section(song, start_s, end_s, seed, lyrics, variation, profile,
+                                     direction=direction)   # 48 kHz composite
     a_s, b_s = info["start_s"], info["end_s"]
     sample_rate = info["sample_rate"]
     lo = max(0.0, a_s - MARGIN_S)
@@ -200,6 +202,7 @@ def replace_stem(song: str, set_id: str, stem_id: str, start_s: float, end_s: fl
         "base": set_id, "model_profile": separator_profile,
         "edit": {"stem": stem_id, "label": target["label"], "start_s": a_s, "end_s": b_s, "seed": info["seed"],
                  "variation": variation,
+                 "direction": info["direction"],
                  "new_lyrics": info["lyrics"] != info["meta"]["params"]["lyrics"]},
     }
     (out_dir / "stems.json").write_text(json.dumps(meta, indent=2))

@@ -85,7 +85,8 @@ def song_tokens(song: str, profile: dict | None = None) -> list[int]:
 
 
 def render_section(song: str, start_s: float, end_s: float, seed: int, lyrics: str | None = None,
-                   variation: str = "new", profile: dict | None = None) -> tuple[np.ndarray, dict]:
+                   variation: str = "new", profile: dict | None = None,
+                   direction: str | None = None) -> tuple[np.ndarray, dict]:
     """New take of [start_s, end_s) of a song; returns the composite audio (48 kHz) and edit info.
 
     variation="new"   regenerate without the song's score: same history, freshly written notes
@@ -104,6 +105,10 @@ def render_section(song: str, start_s: float, end_s: float, seed: int, lyrics: s
 
     lyrics = lyrics if lyrics and lyrics.strip() else meta["params"]["lyrics"]
     options = _base_options(meta)
+    direction = (direction or "").strip()
+    if direction:
+        base_style = options.get("style", "").strip()
+        options["style"] = f"{base_style}. For the selected section only: {direction}" if base_style else direction
     # ponytail: instrumental songs keep their muted score, so "new" only re-performs it; re-plan and mute to vary notes.
     if variation == "new" and "abc" in options and not meta["params"].get("instrumental"):
         # The score fixes melody and rhythm; drop it so the model writes the selection anew.
@@ -131,7 +136,8 @@ def render_section(song: str, start_s: float, end_s: float, seed: int, lyrics: s
     orig = _pcm((engine.OUTPUT_DIR / f"{song}.wav").read_bytes())
     length = min(len(orig), len(new))
     out = crossfade_region(orig[:length], new[:length], int(a / FPS * SR), int(b / FPS * SR), int(XFADE_S * SR))
-    info = {"meta": meta, "lyrics": lyrics, "spliced": spliced, "start_s": round(a / FPS, 2), "end_s": round(b / FPS, 2),
+    info = {"meta": meta, "lyrics": lyrics, "direction": direction,
+            "spliced": spliced, "start_s": round(a / FPS, 2), "end_s": round(b / FPS, 2),
             "sample_rate": SR, "seed": seed, "same_tokens": round(same, 3), "variation": variation, "elapsed_s": round(time.time() - t0, 1)}
     return out, info
 
