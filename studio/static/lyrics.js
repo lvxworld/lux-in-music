@@ -5,7 +5,7 @@ const Lyrics = (() => {
   const $ = (id) => document.getElementById(id);
   const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   let status = null, models = [], message = "", messageError = false, saving = false;
-  let writing = false, undoText = null, undoStyle = null, wroteFromConcept = false, writeToken = 0;
+  let writing = false, undoText = null, undoStyle = null, wroteFromConcept = false, writeToken = 0, writingField = "";
   const listeners = new Set();
 
   async function request(url, body) {
@@ -152,7 +152,15 @@ const Lyrics = (() => {
     const ready = Boolean(status?.configured), instrumental = $("instrumental").checked;
     $("lyrics-setup-link").hidden = ready;
     $("lyrics-write").disabled = !ready || writing;
-    $("lyrics-write").textContent = writing ? "Writing…" : instrumental ? (wroteFromConcept ? "Regenerate style" : "Write style") : wroteFromConcept ? "Regenerate" : "Write style and lyrics";
+    $("lyrics-write").setAttribute("aria-busy", String(writing));
+    if (writing) $("lyrics-write").innerHTML = '<i class="vibe-spinner" aria-hidden="true"></i>Writing…';
+    else $("lyrics-write").textContent = instrumental ? (wroteFromConcept ? "Regenerate style" : "Write style") : wroteFromConcept ? "Regenerate" : "Write style and lyrics";
+    $("lyrics-write-status").classList.toggle("shimmer", writing);
+    // The field being written glows and is read-only, so typing is not overwritten by the reply.
+    for (const id of ["style", "lyrics"]) {
+      const busy = writing && writingField === id;
+      $(id).classList.toggle("writing", busy); $(id).readOnly = busy; $(id).setAttribute("aria-busy", String(busy));
+    }
     $("concept").placeholder = instrumental ? "What should the instrumental sound like? Lux can write the style." : "What is the song about? Lux can write lyrics from it.";
     $("lyrics-undo").hidden = (undoText === null && undoStyle === null) || writing;
   }
@@ -189,6 +197,7 @@ const Lyrics = (() => {
         return;
       }
       $("lyrics-write-status").textContent = "Writing lyrics…";
+      writingField = "lyrics"; renderCreate();
       const result = await generate({ concept, style: $("style").value, title: $("title").value });
       if (token !== writeToken) return;
       setLyrics(result.lyrics);
@@ -200,13 +209,14 @@ const Lyrics = (() => {
       noteReplacements(previousStyle, previousLyrics);
       $("form-error").textContent = error.message; $("lyrics-write-status").textContent = "";
     } finally {
-      if (token === writeToken) { writing = false; renderCreate(); }
+      if (token === writeToken) { writing = false; writingField = ""; renderCreate(); }
     }
   }
 
   // Write Style of music from the request; if it fails, the lyrics still use the current style.
   async function writeStyle(concept, token) {
     $("lyrics-write-status").textContent = "Writing the style…";
+    writingField = "style"; renderCreate();
     const vocabulary = typeof CHIPS === "undefined" ? [] : Object.values(CHIPS).flat();
     try {
       const { style } = await request("/api/lyrics/style", { concept, title: $("title").value,

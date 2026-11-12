@@ -69,7 +69,7 @@ const Vibe = (() => {
       <div class="vibe-mood-row"><label for="vibe-mood">Theme and mood</label>
         <select id="vibe-mood" ${lyricsBusy ? "disabled" : ""}>${moods.map((m) => `<option value="${esc(m.id)}" ${m.id === mood ? "selected" : ""}>${esc(m.label)}${m.id === result?.mood ? " · suggested" : ""}</option>`).join("")}<option value="custom" ${mood === "custom" ? "selected" : ""}>Custom…</option></select>
         <input id="vibe-mood-custom" maxlength="500" placeholder="Describe your own theme, then press Enter" value="${esc(customMood)}" ${mood === "custom" ? "" : "hidden"} ${lyricsBusy ? "disabled" : ""}></div>
-      <label for="vibe-lyrics">Edit the lyrics before using them</label><textarea id="vibe-lyrics" rows="12" maxlength="4000" placeholder="${lyricsBusy ? "Writing lyrics…" : "Lyrics appear here."}">${esc(lyricsText)}</textarea>
+      <label for="vibe-lyrics">Edit the lyrics before using them</label><textarea id="vibe-lyrics" rows="12" maxlength="4000" ${lyricsBusy ? 'class="writing" readonly aria-busy="true"' : ""} placeholder="${lyricsBusy ? "Writing lyrics…" : "Lyrics appear here."}">${esc(lyricsText)}</textarea>
       <p id="vibe-lyrics-error" class="error" role="alert">${esc(lyricsError)}</p>
       <div class="vibe-actions"><button class="btn" type="button" id="vibe-lyrics-again" ${lyricsBusy || busy ? "disabled" : ""}>${lyricsText ? "Regenerate lyrics" : "Write lyrics"}</button>${lyricsUndo ? `<button class="btn" type="button" id="vibe-lyrics-undo" ${lyricsBusy ? "disabled" : ""}>Undo</button>` : ""}${lyricsBusy ? '<span class="vibe-wait" role="status" aria-live="polite"><i class="vibe-spinner"></i>Writing lyrics…</span>' : ""}</div>
       <p id="vibe-lyrics-hint" class="hint" role="status">${esc(lyricsHint)}</p></div>`;

@@ -596,6 +596,9 @@ def main():
                     assert lyrics_posts[-1]["style"].endswith("take 1")
                     expect(page.locator(".chip[data-c='piano']")).to_have_class(re.compile("on"))
                     expect(page.locator("#lyrics-write")).to_have_text("Regenerate")
+                    for field in ("#style", "#lyrics"):  # The writing highlight must not stay after the reply.
+                        expect(page.locator(field)).not_to_have_class(re.compile(r"\bwriting\b"))
+                        expect(page.locator(field)).to_be_editable()
                     page.locator("#lyrics-write").click()
                     expect(page.locator("#lyrics")).to_have_value("[Verse]\nSynthetic written line 2")
                     expect(page.locator("#style")).to_have_value(re.compile("take 2$"))
