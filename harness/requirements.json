@@ -73,7 +73,7 @@
         "Hook verifies optional local SheetSage2 and MERT artifacts independently of music profiles, validates recordings, previews melody-only transcription and maps reviewed notes or ABC into YuE2 without sending recording bytes to the music model.",
         "SheetSage2 Hook setup requires explicit license acceptance, verifies pinned model artifacts, runs an isolated offline process and removes transient recording and score files after analysis.",
         "The optional lyrics writer is independent of music providers: it is unconfigured and makes no requests on a fresh install, never returns its saved API key, and sends Vibe images only when Settings says the model reads images.",
-        "Every Vibe direction suggests a known lyrics mood; lyric replies keep only the shared section tags and fail clearly without them."
+        "Every Vibe direction suggests a known lyrics mood; lyric replies keep only the shared section tags (numbered and variant headers included) and fail clearly without them; instrumental styles always keep the instrumental tag."
       ]
     },
     {

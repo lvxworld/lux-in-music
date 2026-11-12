@@ -72,12 +72,18 @@ STYLE_PROMPT = (
     "Example: English, indie pop, 110 BPM, bright acoustic guitar, warm bass, soft punchy drums, intimate lead "
     "vocal, layered chorus harmonies, catchy melodic hook, gentle build-up, resolved outro, warm polished mix"
 )
-VOCAL_TAG = re.compile(r"vocal|voice|singer|sung|choir|rap|harmon", re.I)
+VOCAL_TAG = re.compile(r"\b(?:vocals?|voices?|singers?|sung|choirs?|rapping|rap|harmon(?:y|ies))\b", re.I)
+
+
+def _strip_reasoning(text: str) -> str:
+    """Remove model reasoning, including a reply that starts after a closing tag."""
+    text = re.sub(r"<think>.*?(</think>|$)", "", text or "", flags=re.S | re.I)
+    return re.sub(r"^.*?</think>", "", text, count=1, flags=re.S | re.I)
 
 
 def clean_style(text: str, instrumental=False) -> str:
     """Keep a single comma-separated style prompt from a model reply."""
-    text = re.sub(r"<think>.*?(</think>|$)", "", text or "", flags=re.S | re.I).replace("```", "")
+    text = _strip_reasoning(text).replace("```", "")
     lines = [re.sub(r"^\W*(style( of music| prompt)?|tags)\s*:\s*", "", line.strip(), flags=re.I).strip(" *\"'`-")
              for line in text.splitlines()]
     tags = []
@@ -86,12 +92,17 @@ def clean_style(text: str, instrumental=False) -> str:
         if part and len(part) <= 80 and part.casefold() not in {tag.casefold() for tag in tags}:
             if not (instrumental and VOCAL_TAG.search(part)):
                 tags.append(part)
-    if instrumental and "instrumental" not in {tag.casefold() for tag in tags}:
-        tags.append("instrumental")
+    if instrumental:
+        tags = [tag for tag in tags if tag.casefold() != "instrumental"]
+        tags = (tags[:19] if len(tags) > 19 else tags) + ["instrumental"]
     if len(tags) < 3:
         raise LyricsUpstreamError("The lyrics model did not return a usable style.")
-    style = ", ".join(tags[:20])
-    return style[:MAX_STYLE_CHARS].rsplit(",", 1)[0] if len(style) > MAX_STYLE_CHARS else style
+    tags = tags[:20]
+    style = ", ".join(tags)
+    while len(style) > MAX_STYLE_CHARS and len(tags) > 3:
+        tags.pop(-2 if instrumental else -1)
+        style = ", ".join(tags)
+    return style
 
 
 class LyricsNotConfigured(ValueError):
@@ -112,9 +123,20 @@ def clean_lyrics(text: str) -> str:
     lines, started = [], False
     for raw in text.replace("\r\n", "\n").split("\n"):
         line = raw.strip().strip("*").strip()
-        tag = re.fullmatch(r"\[?\s*([A-Za-z][A-Za-z -]*?)\s*(?:\d+)?\s*:?\s*\]?:?", line) if line else None
+        tag = re.fullmatch(r"\[?\s*([A-Za-z][A-Za-z -]*?)\s*(?:(\d+)\s*)?:?\s*\]?:?", line) if line else None
         name = tag and canonical.get(tag.group(1).strip().casefold())
-        if name and (line.startswith("[") or line.endswith(":") or line.casefold() == name.casefold()):
+        bracket = re.fullmatch(r"\[([^\]]*)\]", line)
+        if bracket and not name:
+            note = re.sub(r"[^a-z0-9]+", " ", bracket.group(1).casefold())
+            for needle, section in (("pre chorus", "Pre-Chorus"), ("prechorus", "Pre-Chorus"),
+                                    ("chorus", "Chorus"), ("hook", "Chorus"), ("verse", "Verse"),
+                                    ("bridge", "Bridge"), ("outro", "Outro"), ("intro", "Intro")):
+                if re.search(rf"\b{needle}\b", note):
+                    name = section
+                    break
+        header = tag and " ".join(filter(None, (tag.group(1).strip().casefold(), tag.group(2))))
+        if name and (line.startswith("[") or line.endswith(":")
+                     or line.strip(": ").casefold().replace(" ", "") == header.replace(" ", "")):
             if lines and lines[-1] != "":
                 lines.append("")
             lines.append(f"[{name}]")
@@ -144,6 +166,23 @@ def normalize_base_url(value) -> str:
 def _origin(url: str) -> str:
     parsed = urlparse(url)
     return f"{parsed.scheme}://{parsed.netloc}".casefold() if parsed.netloc else ""
+
+
+def _keeps_saved_key(old_url: str, new_url: str) -> bool:
+    """A saved key follows its server through an http -> https upgrade, and nowhere else."""
+    old, new = urlparse(old_url), urlparse(new_url)
+    if not old.hostname or not new.hostname or old.hostname.casefold() != new.hostname.casefold():
+        return False
+    if old.scheme == new.scheme:
+        return _origin(old_url) == _origin(new_url)
+    if (old.scheme, new.scheme) != ("http", "https"):
+        return False
+    try:
+        old_port, new_port = old.port, new.port
+    except ValueError:
+        return False
+    # Default ports for the two schemes, or the very same explicit port.
+    return old_port == new_port or (old_port in (None, 80) and new_port in (None, 443))
 
 
 def model_ids(data) -> list[str]:
@@ -203,23 +242,23 @@ class LyricsWriter:
                 "moods": MOODS}
 
     def save(self, update: dict):
-        state = dict(self.state)
-        if update.get("base_url") is not None:
-            state["base_url"] = normalize_base_url(update["base_url"])
-            if update.get("api_key") is None and _origin(state["base_url"]) != _origin(self.state["base_url"]):
-                state["api_key"] = ""  # A saved key only ever goes to the server it was entered for.
-        if update.get("model") is not None:
-            state["model"] = str(update["model"]).strip()
-        if update.get("api_key") is not None:
-            state["api_key"] = str(update["api_key"]).strip()
-        if update.get("supports_images") is not None:
-            state["supports_images"] = bool(update["supports_images"])
-        if update.get("temperature") is not None:
-            temperature = float(update["temperature"])
-            if not 0 <= temperature <= 2:
-                raise ValueError("Temperature must be between 0 and 2")
-            state["temperature"] = temperature
         with self.lock:
+            state = dict(self.state)
+            if update.get("base_url") is not None:
+                state["base_url"] = normalize_base_url(update["base_url"])
+                if update.get("api_key") is None and not _keeps_saved_key(self.state["base_url"], state["base_url"]):
+                    state["api_key"] = ""  # A saved key only ever goes to the server it was entered for.
+            if update.get("model") is not None:
+                state["model"] = str(update["model"]).strip()
+            if update.get("api_key") is not None:
+                state["api_key"] = str(update["api_key"]).strip()
+            if update.get("supports_images") is not None:
+                state["supports_images"] = bool(update["supports_images"])
+            if update.get("temperature") is not None:
+                temperature = float(update["temperature"])
+                if not 0 <= temperature <= 2:
+                    raise ValueError("Temperature must be between 0 and 2")
+                state["temperature"] = temperature
             self.state_dir.mkdir(parents=True, exist_ok=True)
             temp = self.path.with_suffix(".json.tmp")
             temp.write_text(json.dumps(state, indent=2) + "\n")

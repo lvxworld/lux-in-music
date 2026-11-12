@@ -5,9 +5,10 @@ const Vibe = (() => {
   let files = [], previewUrls = [], result = null, busy = false, accepted = false, acceptanceTouched = false, analysisError = "";
   let status = null, pollTimer = null, wasVisible = false, lastSettingsJson = "";
   let createReference = null, createPreviewUrls = [], replaceNext = false, useAdvanced = true, resultProfileKey = "";
-  let lyricsText = "", mood = "", customMood = "", moodTouched = false, lyricsBusy = false, lyricsError = "", lyricsToken = 0;
+  let lyricsText = "", lyricsOrigin = "", lyricsHint = "", lyricsUndo = null, mood = "", customMood = "", moodTouched = false, lyricsBusy = false, lyricsError = "", lyricsToken = 0;
   const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const current = () => location.hash === "#/vibe";
+  const lyricsEdited = () => Boolean(lyricsText.trim()) && lyricsText !== lyricsOrigin;
   async function request(url, options) {
     const response = await fetch(url, options);
     const data = await response.json().catch(() => ({}));
@@ -70,20 +71,29 @@ const Vibe = (() => {
         <input id="vibe-mood-custom" maxlength="500" placeholder="Describe your own theme, then press Enter" value="${esc(customMood)}" ${mood === "custom" ? "" : "hidden"} ${lyricsBusy ? "disabled" : ""}></div>
       <label for="vibe-lyrics">Edit the lyrics before using them</label><textarea id="vibe-lyrics" rows="12" maxlength="4000" placeholder="${lyricsBusy ? "Writing lyrics…" : "Lyrics appear here."}">${esc(lyricsText)}</textarea>
       <p id="vibe-lyrics-error" class="error" role="alert">${esc(lyricsError)}</p>
-      <div class="vibe-actions"><button class="btn" type="button" id="vibe-lyrics-again" ${lyricsBusy || busy ? "disabled" : ""}>${lyricsText ? "Regenerate lyrics" : "Write lyrics"}</button>${lyricsBusy ? '<span class="vibe-wait" role="status" aria-live="polite"><i class="vibe-spinner"></i>Writing lyrics…</span>' : ""}</div></div>`;
+      <div class="vibe-actions"><button class="btn" type="button" id="vibe-lyrics-again" ${lyricsBusy || busy ? "disabled" : ""}>${lyricsText ? "Regenerate lyrics" : "Write lyrics"}</button>${lyricsUndo ? `<button class="btn" type="button" id="vibe-lyrics-undo" ${lyricsBusy ? "disabled" : ""}>Undo</button>` : ""}${lyricsBusy ? '<span class="vibe-wait" role="status" aria-live="polite"><i class="vibe-spinner"></i>Writing lyrics…</span>' : ""}</div>
+      <p id="vibe-lyrics-hint" class="hint" role="status">${esc(lyricsHint)}</p></div>`;
   }
 
-  async function writeLyrics() {
+  async function writeLyrics(explicit = false) {
     if (!result || !window.Lyrics?.configured()) return;
+    if (!explicit && lyricsEdited()) {
+      lyricsHint = "Mood changed. Regenerate lyrics will replace your edited lyrics.";
+      if (current()) render();
+      return;
+    }
     if (mood === "custom" && !customMood.trim()) { lyricsError = "Describe your theme first."; render(); $("vibe-mood-custom")?.focus(); return; }
-    const token = ++lyricsToken;
-    lyricsBusy = true; lyricsError = ""; render();
+    const token = ++lyricsToken, previous = lyricsText, previousOrigin = lyricsOrigin;
+    lyricsBusy = true; lyricsError = ""; lyricsHint = ""; render();
     try {
       const images = window.Lyrics.status()?.supports_images
         ? await Promise.all(files.map((file) => downscale(file, 1024, .85))) : [];
       const data = await window.Lyrics.generate({ style: result.style, visual: result.visual || "",
         mood: mood === "custom" ? "" : mood, custom: mood === "custom" ? customMood.trim() : "", images });
-      if (token === lyricsToken) lyricsText = data.lyrics;
+      if (token === lyricsToken) {
+        lyricsText = data.lyrics; lyricsOrigin = data.lyrics;
+        lyricsUndo = explicit && previous.trim() && previous !== data.lyrics ? { text: previous, origin: previousOrigin } : null;
+      }
     } catch (error) { if (token === lyricsToken) lyricsError = error.message; }
     finally { if (token === lyricsToken) { lyricsBusy = false; if (current()) render(); } }
   }
@@ -102,7 +112,7 @@ const Vibe = (() => {
   function updateFiles(next) {
     previewUrls.forEach(url => URL.revokeObjectURL(url));
     files = next; previewUrls = files.map(file => URL.createObjectURL(file));
-    result = null; analysisError = ""; lyricsToken++; lyricsText = ""; lyricsError = ""; lyricsBusy = false; moodTouched = false; render();
+    result = null; analysisError = ""; lyricsToken++; lyricsText = ""; lyricsOrigin = ""; lyricsHint = ""; lyricsUndo = null; lyricsError = ""; lyricsBusy = false; moodTouched = false; render();
   }
 
   function selectFiles(candidates, replace = false) {
@@ -142,9 +152,13 @@ const Vibe = (() => {
     };
     if ($("vibe-mood-custom")) {
       $("vibe-mood-custom").oninput = event => { customMood = event.target.value; };
-      $("vibe-mood-custom").onkeydown = event => { if (event.key === "Enter") { event.preventDefault(); writeLyrics(); } };
+      $("vibe-mood-custom").onkeydown = event => { if (event.key === "Enter") { event.preventDefault(); writeLyrics(true); } };
     }
-    $("vibe-lyrics-again")?.addEventListener("click", writeLyrics);
+    $("vibe-lyrics-again")?.addEventListener("click", () => writeLyrics(true));
+    if ($("vibe-lyrics-undo")) $("vibe-lyrics-undo").onclick = () => {
+      if (!lyricsUndo) return;
+      lyricsText = lyricsUndo.text; lyricsOrigin = lyricsUndo.origin; lyricsUndo = null; lyricsHint = ""; render();
+    };
     $("vibe-use")?.addEventListener("click", () => {
       const style = $("vibe-style").value.trim();
       if (!style) { $("vibe-style").focus(); return; }
@@ -209,10 +223,12 @@ const Vibe = (() => {
       result = await request("/api/vibe/analyze", { method: "POST", body });
       resultProfileKey = modelKey; useAdvanced = true;
       if (!moodTouched) { mood = result.mood || "dreamy"; customMood = ""; }
-      lyricsToken++; lyricsText = ""; lyricsError = ""; lyricsBusy = false;
+      lyricsToken++; lyricsError = ""; lyricsBusy = false; lyricsUndo = null;
+      if (lyricsEdited()) lyricsHint = "New analysis. Regenerate lyrics will replace your edited lyrics.";
+      else { lyricsText = ""; lyricsHint = ""; }
     } catch (error) { analysisError = error.message; }
     finally { busy = false; render(); }
-    if (result && !analysisError) writeLyrics();
+    if (result && !analysisError && !lyricsEdited()) writeLyrics();
   }
 
   function renderSettings() {

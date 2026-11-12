@@ -34,7 +34,7 @@ from .artwork import prepare_vibe_artwork, attach_vibe_artwork
 from .hook import get_hook_manager, HookBusy, HookUnavailable, MAX_BYTES as MAX_HOOK_BYTES
 from .hook_reference import prepare_hook_reference, attach_hook_reference
 from .lyrics import (get_lyrics_writer, validate_image_data_url, LyricsNotConfigured,
-                     LyricsUpstreamError, MAX_LYRICS_IMAGES)
+                     LyricsUpstreamError, MAX_LYRICS_IMAGES, MOOD_IDS)
 from starlette.concurrency import run_in_threadpool
 
 log = logging.getLogger("lux_in_music")
@@ -469,6 +469,8 @@ def lyrics_generate(req: LyricsRequest):
         images = [validate_image_data_url(image) for image in req.images]
     except ValueError as error:
         raise HTTPException(422, str(error)) from error
+    if req.mood and req.mood not in MOOD_IDS:
+        raise HTTPException(422, "Unknown mood. Choose a mood from the list, or describe your own theme.")
     if not any(value.strip() for value in (req.concept, req.visual, req.custom)) and not images:
         raise HTTPException(422, "Describe a song concept first")
     fields = req.model_dump(exclude={"images"})

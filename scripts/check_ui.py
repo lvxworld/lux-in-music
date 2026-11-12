@@ -166,7 +166,7 @@ def check_hook(browser, url, artifacts, expect):
     page.locator("#hook-bpm").fill("120"); page.locator("#hook-bpm").press("Tab")
     page.locator("#hook-analyze").click()
     expect(page.locator("#hook-use")).to_be_enabled()
-    expect(page.locator("#hook")).to_contain_text("SheetSage2 analyzed the recording locally.")
+    expect(page.locator("#hook .hook-warning")).to_have_text("The detector may be switching between instruments. Listen to the preview.")
     expect(page.locator("#hook")).to_contain_text("Your style comes from Create")
     expect(page.locator(".hook-lyrics-note")).to_contain_text("does not yet combine its recorded melody reference with sung lyrics")
     expect(page.locator("#hook-mode-help")).to_contain_text("instrumental song")
@@ -537,10 +537,15 @@ def main():
                     lyrics_posts = []
                     def lyrics_settings(route):
                         body = route.request.post_data_json
-                        assert body["api_key"] == "sk-synthetic" and body["base_url"] == "http://llm.test/v1" and body["model"] == "model-b"
+                        assert (body["api_key"] == "sk-synthetic" and body["base_url"] == "http://llm.test/v1"
+                                and body["model"] == "model-b" and body["supports_images"] is True), body
                         lyrics_status.update(configured=True, base_url=body["base_url"], model=body["model"], api_key_set=True)
                         route.fulfill(json=lyrics_status)
+                    lyrics_fail = False
                     def lyrics_generate(route):
+                        if lyrics_fail:
+                            route.fulfill(status=503, json={"detail": "Synthetic lyrics failure"})
+                            return
                         lyrics_posts.append(route.request.post_data_json)
                         route.fulfill(json={"lyrics": f"[Verse]\nSynthetic written line {len(lyrics_posts)}", "used_images": 0})
                     page.route("**/api/lyrics/status", lambda route: route.fulfill(json=lyrics_status))
@@ -567,6 +572,15 @@ def main():
                     expect(page.locator("#lyrics-model")).to_have_value("model-a")
                     page.locator("#lyrics-model").select_option("model-b")
                     page.locator("#lyrics-api-key").fill("sk-synthetic")
+                    page.locator("#lyrics-images").check()
+                    page.locator("#lyrics-load-models").click()
+                    expect(page.locator("#lyrics-settings-message")).to_contain_text("2 models found")
+                    expect(page.locator("#lyrics-api-key")).to_have_value("sk-synthetic")
+                    assert page.locator("#lyrics-images").is_checked(), "the images checkbox was reset by a re-render"
+                    page.locator("#lyrics-model").select_option("model-a")
+                    expect(page.locator("#lyrics-api-key")).to_have_value("sk-synthetic")
+                    assert page.locator("#lyrics-images").is_checked(), "the images checkbox was reset by a model change"
+                    page.locator("#lyrics-model").select_option("model-b")
                     page.locator("#lyrics-test").click()
                     expect(page.locator("#lyrics-settings-message")).to_contain_text("Connected")
                     expect(page.locator("#lyrics-api-key")).to_have_value("")
@@ -588,6 +602,18 @@ def main():
                     page.locator("#lyrics-undo").click()
                     expect(page.locator("#lyrics")).to_have_value("[Verse]\nSynthetic written line 1")
                     expect(page.locator("#style")).to_have_value(re.compile("take 1$"))
+                    # A style write stays undoable when the lyrics step that follows fails.
+                    lyrics_fail = True
+                    page.locator("#lyrics-write").click()
+                    expect(page.locator("#form-error")).to_contain_text("Synthetic lyrics failure")
+                    expect(page.locator("#style")).to_have_value(re.compile("take 3$"))
+                    expect(page.locator("#lyrics")).to_have_value("[Verse]\nSynthetic written line 1")
+                    expect(page.locator("#lyrics-undo")).to_be_visible()
+                    page.locator("#lyrics-undo").click()
+                    expect(page.locator("#style")).to_have_value(re.compile("take 1$"))
+                    expect(page.locator("#lyrics")).to_have_value("[Verse]\nSynthetic written line 1")
+                    expect(page.locator("#lyrics-write-status")).to_have_text("Previous style restored.")
+                    lyrics_fail = False
                     page.unroute("**/api/vibe/analyze")
                     page.route("**/api/vibe/analyze", lambda route: route.fulfill(json={"entry_id": entries[0]["id"], "entry_ids": [entries[0]["id"]], "image_count": 5,
                         "style": "Synthetic multi-image direction", "mood": "hopeful", "visual": "Synthetic scene"}))
@@ -601,9 +627,36 @@ def main():
                     page.locator("#vibe-mood-custom").press("Enter")
                     expect(page.locator("#vibe-lyrics")).to_have_value("[Verse]\nSynthetic written line 4")
                     assert lyrics_posts[-1]["custom"] == "Synthetic theme" and lyrics_posts[-1]["mood"] == ""
+                    lyrics_count = len(lyrics_posts)
+                    page.locator("#vibe-lyrics").fill("[Verse]\nSynthetic hand edit")
+                    page.locator("#vibe-mood").select_option("dreamy")
+                    expect(page.locator("#vibe-lyrics")).to_have_value("[Verse]\nSynthetic hand edit")
+                    expect(page.locator("#vibe-lyrics-hint")).to_contain_text("Regenerate lyrics will replace your edited lyrics")
+                    assert len(lyrics_posts) == lyrics_count
+                    page.locator("#vibe-lyrics-again").click()
+                    expect(page.locator("#vibe-lyrics")).to_have_value("[Verse]\nSynthetic written line 5")
+                    expect(page.locator("#vibe-lyrics-undo")).to_be_visible()
+                    page.locator("#vibe-lyrics-undo").click()
+                    expect(page.locator("#vibe-lyrics")).to_have_value("[Verse]\nSynthetic hand edit")
+                    expect(page.locator("#vibe-lyrics-undo")).to_have_count(0)
+                    assert len(lyrics_posts) == lyrics_count + 1
+                    page.locator("#vibe-again").click()
+                    expect(page.locator("#vibe-lyrics-hint")).to_contain_text("New analysis")
+                    expect(page.locator("#vibe-lyrics")).to_have_value("[Verse]\nSynthetic hand edit")
+                    assert len(lyrics_posts) == lyrics_count + 1
+                    page.locator("#vibe-mood").select_option("custom")
+                    page.locator("#vibe-mood-custom").fill("Synthetic theme")
+                    page.locator("#vibe-mood-custom").press("Enter")
+                    expect(page.locator("#vibe-lyrics")).to_have_value("[Verse]\nSynthetic written line 6")
+                    expect(page.locator("#vibe-lyrics-undo")).to_be_visible()
+                    assert lyrics_posts[-1]["custom"] == "Synthetic theme" and lyrics_posts[-1]["mood"] == ""
+                    assert len(lyrics_posts) == lyrics_count + 2
+                    page.locator("#vibe-lyrics-undo").click()
+                    expect(page.locator("#vibe-lyrics")).to_have_value("[Verse]\nSynthetic hand edit")
+                    expect(page.locator("#vibe-lyrics-undo")).to_have_count(0)
                     page.screenshot(path=str(args.artifacts / "vibe-lyrics-desktop.png"))
                     page.locator("#vibe-use").click()
-                    expect(page.locator("#lyrics")).to_have_value("[Verse]\nSynthetic written line 4")
+                    expect(page.locator("#lyrics")).to_have_value("[Verse]\nSynthetic hand edit")
                     for path in ("status", "settings", "test", "generate", "discover", "models", "style"):
                         page.unroute(f"**/api/lyrics/{path}")
                     page.reload()
@@ -763,7 +816,8 @@ def main():
                                 const tip = button.querySelector('[role=tooltip]').getBoundingClientRect();
                                 const pane = document.querySelector('.create').getBoundingClientRect();
                                 const sidebar = document.querySelector('.sidebar').getBoundingClientRect();
-                                return {tipLeft: tip.left, paneLeft: pane.left, sidebarRight: sidebar.right};
+                                const b = button.getBoundingClientRect(), g = document.querySelector('#sliders').getBoundingClientRect();
+                                return {help: button.getAttribute('aria-label'), tipLeft: tip.left, tipRight: tip.right, paneLeft: pane.left, paneRight: pane.right, sidebarRight: sidebar.right, btnLeft: b.left, btnRight: b.right, gridLeft: g.left, gridRight: g.right, vw: innerWidth};
                             }""", help_button.element_handle())
                             assert geometry["tipLeft"] >= geometry["paneLeft"] and geometry["tipLeft"] >= geometry["sidebarRight"], geometry
                     page.locator(".advanced-help").first.focus()
@@ -788,6 +842,38 @@ def main():
                     page.locator("#instrumental-toggle").click()
                     expect(page.locator("#lyrics")).to_be_hidden()
                     expect(page.locator("#lyrics-advice")).to_contain_text("No vocals")
+                    # Instrumental keeps the concept writer visible and writes the style only.
+                    expect(page.locator("#lyrics-writer")).to_be_visible()
+                    expect(page.locator("#concept")).to_have_attribute("placeholder", "What should the instrumental sound like? Lux can write the style.")
+                    expect(page.locator("#lyrics-write")).to_have_text("Write style")
+                    instrumental_status = {"configured": True, "base_url": "http://llm.test/v1", "model": "model-a", "api_key_set": False,
+                                           "api_key_from_env": False, "supports_images": False, "temperature": .8, "state_error": None, "moods": []}
+                    instrumental_style_posts, instrumental_lyrics_posts = [], []
+                    def instrumental_style(route):
+                        instrumental_style_posts.append(route.request.post_data_json)
+                        route.fulfill(json={"style": "English, ambient synth, 60 BPM, no vocals"})
+                    def instrumental_lyrics(route):
+                        instrumental_lyrics_posts.append(route.request.post_data_json)
+                        route.fulfill(json={"lyrics": "[Verse]\nSynthetic unexpected line", "used_images": 0})
+                    page.route("**/api/lyrics/status", lambda route: route.fulfill(json=instrumental_status))
+                    page.route("**/api/lyrics/style", instrumental_style)
+                    page.route("**/api/lyrics/generate", instrumental_lyrics)
+                    page.evaluate("Lyrics.refresh()")
+                    lyrics_before = page.locator("#lyrics").input_value()
+                    style_before = page.locator("#style").input_value()
+                    page.locator("#concept").fill("Synthetic instrumental concept")
+                    page.locator("#lyrics-write").click()
+                    expect(page.locator("#style")).to_have_value("English, ambient synth, 60 BPM, no vocals")
+                    expect(page.locator("#lyrics-write")).to_have_text("Regenerate style")
+                    assert instrumental_style_posts[-1]["instrumental"] is True
+                    assert instrumental_lyrics_posts == []
+                    expect(page.locator("#lyrics")).to_have_value(lyrics_before)
+                    expect(page.locator("#lyrics-undo")).to_be_visible()
+                    page.locator("#lyrics-undo").click()
+                    expect(page.locator("#style")).to_have_value(style_before)
+                    expect(page.locator("#lyrics-write-status")).to_have_text("Previous style restored.")
+                    for path in ("status", "style", "generate"):
+                        page.unroute(f"**/api/lyrics/{path}")
                     page.route("**/api/generate", lambda route: route.fulfill(json={}))
                     with page.expect_request("**/api/generate") as instrumental_request:
                         page.locator("#go").click()
@@ -795,6 +881,7 @@ def main():
                     page.unroute("**/api/generate")
                     page.locator("#instrumental-toggle").click()
                     expect(page.locator("#lyrics")).to_be_visible()
+                    expect(page.locator("#concept")).to_have_attribute("placeholder", "What is the song about? Lux can write lyrics from it.")
                     page.evaluate("state.library[0].generation = {status:'truncated', message:'Stopped at the hard limit. The song may be unfinished.'}; render()")
                     expect(page.locator(".badge").filter(has_text="Unfinished · limit reached")).to_be_visible()
                     page.evaluate("state.library[0].generation = {status:'model_end', shorter_than_target:true, target_duration_s:330}; state.library[0].duration_s = 229; render()")

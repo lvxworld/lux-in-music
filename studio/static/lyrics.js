@@ -28,7 +28,8 @@ const Lyrics = (() => {
   function generate(body) { return request("/api/lyrics/generate", body); }
 
   // Unsaved Settings input survives re-renders; null means "show the saved value".
-  let draft = { base_url: null, model: null, other: false }, servers = [], discovering = false, discovered = false;
+  // The API key stays in this variable only: it is never logged or sent back to the server on render.
+  let draft = { base_url: null, model: null, other: false, api_key: null, images: null }, servers = [], discovering = false, discovered = false;
   let loadingModels = false, modelsFor = "", modelsToken = 0;
   const draftUrl = () => draft.base_url ?? status?.base_url ?? "";
   const draftModel = () => draft.model ?? status?.model ?? "";
@@ -50,9 +51,9 @@ const Lyrics = (() => {
         ${choices.length ? `<select id="lyrics-model">${model ? "" : '<option value="" selected disabled>Choose a model</option>'}${choices.map((id) => `<option value="${esc(id)}" ${id === model && !other ? "selected" : ""}>${esc(id)}</option>`).join("")}<option value="__other__" ${other ? "selected" : ""}>Other…</option></select>` : ""}
         ${!choices.length || other ? `<input id="lyrics-model-name" placeholder="Model name" value="${esc(model)}">` : ""}
         <label for="lyrics-api-key">API key <span class="meta">(optional for local servers)</span></label>
-        <input id="lyrics-api-key" type="password" autocomplete="new-password" placeholder="${s.api_key_from_env ? "Using LUX_LYRICS_API_KEY" : s.api_key_set ? "Saved · leave blank to keep" : "Not set"}">
+        <input id="lyrics-api-key" type="password" autocomplete="new-password" value="${esc(draft.api_key ?? "")}" placeholder="${s.api_key_from_env ? "Using LUX_LYRICS_API_KEY" : s.api_key_set ? "Saved · leave blank to keep" : "Not set"}">
         ${s.api_key_set && !s.api_key_from_env ? '<button type="button" class="link" id="lyrics-clear-key">Clear saved key</button>' : ""}
-        <label class="license-accept"><input type="checkbox" id="lyrics-images" ${s.supports_images ? "checked" : ""}> Model can read images (send Vibe images with the request)</label>
+        <label class="license-accept"><input type="checkbox" id="lyrics-images" ${(draft.images ?? s.supports_images) ? "checked" : ""}> Model can read images (send Vibe images with the request)</label>
       </form>
       <p class="hint">When you write lyrics, your concept, style and mood are sent to this endpoint. Vibe images are sent only when the image option is on. The API key stays on this computer and is never shown again. Finding local servers checks only common ports on this computer.</p>
       ${s.state_error ? `<p class="error">${esc(s.state_error)}</p>` : ""}
@@ -66,6 +67,8 @@ const Lyrics = (() => {
     $("lyrics-load-models").onclick = () => loadModels(true);
     $("lyrics-base-url").oninput = (event) => { draft.base_url = event.target.value; };
     $("lyrics-base-url").onchange = () => loadModels(false);
+    if ($("lyrics-api-key")) $("lyrics-api-key").oninput = (event) => { draft.api_key = event.target.value; };
+    $("lyrics-images").onchange = (event) => { draft.images = event.target.checked; };
     if ($("lyrics-model")) $("lyrics-model").onchange = (event) => {
       draft.other = event.target.value === "__other__";
       if (!draft.other) draft.model = event.target.value;
@@ -120,7 +123,7 @@ const Lyrics = (() => {
     saving = true; message = test ? "Saving and testing…" : "Saving…"; messageError = false; renderSettings();
     try {
       status = await request("/api/lyrics/settings", body);
-      draft = { base_url: null, model: null, other: false };
+      draft = { base_url: null, model: null, other: false, api_key: null, images: null };
       message = "Saved.";
       if (test) {
         let result = await request("/api/lyrics/test", {});
@@ -146,11 +149,12 @@ const Lyrics = (() => {
 
   function renderCreate() {
     if (!$("lyrics-write")) return;
-    const ready = Boolean(status?.configured);
+    const ready = Boolean(status?.configured), instrumental = $("instrumental").checked;
     $("lyrics-setup-link").hidden = ready;
     $("lyrics-write").disabled = !ready || writing;
-    $("lyrics-write").textContent = writing ? "Writing…" : wroteFromConcept ? "Regenerate" : "Write style and lyrics";
-    $("lyrics-undo").hidden = undoText === null || writing;
+    $("lyrics-write").textContent = writing ? "Writing…" : instrumental ? (wroteFromConcept ? "Regenerate style" : "Write style") : wroteFromConcept ? "Regenerate" : "Write style and lyrics";
+    $("concept").placeholder = instrumental ? "What should the instrumental sound like? Lux can write the style." : "What is the song about? Lux can write lyrics from it.";
+    $("lyrics-undo").hidden = (undoText === null && undoStyle === null) || writing;
   }
 
   function setLyrics(text) {
@@ -159,22 +163,42 @@ const Lyrics = (() => {
     field.dispatchEvent(new Event("input", { bubbles: true }));
   }
 
+  // Remember what a write replaced, so Undo can revert it even when a later step fails.
+  function noteReplacements(styleBefore, lyricsBefore) {
+    const styleChanged = $("style").value !== styleBefore, lyricsChanged = $("lyrics").value !== lyricsBefore;
+    if (!styleChanged && !lyricsChanged) return;
+    undoStyle = styleChanged ? styleBefore : null;
+    undoText = lyricsChanged ? lyricsBefore : null;
+  }
+
   async function writeFromConcept() {
     const concept = $("concept").value.trim();
     if (!concept) { $("lyrics-write-status").textContent = "Describe the song first."; $("concept").focus(); return; }
-    const token = ++writeToken;
+    const token = ++writeToken, instrumental = $("instrumental").checked;
+    const previousStyle = $("style").value, previousLyrics = $("lyrics").value;
     writing = true; $("form-error").textContent = ""; renderCreate();
     try {
-      const previousStyle = $("style").value, styleNote = await writeStyle(concept, token);
+      const styleNote = await writeStyle(concept, token);
       if (token !== writeToken) return;
+      // The style is replaced before the lyrics request, so record it before that can fail.
+      noteReplacements(previousStyle, previousLyrics);
+      if (instrumental) {
+        // Instrumental songs use the style only; the lyrics field is not written or replaced.
+        wroteFromConcept = !styleNote;
+        $("lyrics-write-status").textContent = styleNote || "Style written. Edit it freely.";
+        return;
+      }
       $("lyrics-write-status").textContent = "Writing lyrics…";
       const result = await generate({ concept, style: $("style").value, title: $("title").value });
       if (token !== writeToken) return;
-      undoText = $("lyrics").value; undoStyle = $("style").value !== previousStyle ? previousStyle : null; wroteFromConcept = true;
       setLyrics(result.lyrics);
-      $("lyrics-write-status").textContent = styleNote || "Style and lyrics written. Edit them freely.";
+      noteReplacements(previousStyle, previousLyrics);
+      wroteFromConcept = true;
+      $("lyrics-write-status").textContent = styleNote ? `Lyrics written. ${styleNote}` : "Style and lyrics written. Edit them freely.";
     } catch (error) {
-      if (token === writeToken) { $("form-error").textContent = error.message; $("lyrics-write-status").textContent = ""; }
+      if (token !== writeToken) return;
+      noteReplacements(previousStyle, previousLyrics);
+      $("form-error").textContent = error.message; $("lyrics-write-status").textContent = "";
     } finally {
       if (token === writeToken) { writing = false; renderCreate(); }
     }
@@ -190,20 +214,22 @@ const Lyrics = (() => {
       if (token !== writeToken) return "";
       $("style").value = style; syncChips();
       return "";
-    } catch (error) { return `Lyrics written; the style was kept (${error.message})`; }
+    } catch (error) { return `The style was kept (${error.message})`; }
   }
 
   function setupCreate() {
     if (!$("lyrics-write")) return;
     $("lyrics-write").onclick = writeFromConcept;
     $("lyrics-undo").onclick = () => {
-      if (undoText === null) return;
-      setLyrics(undoText); undoText = null;
-      const restoredStyle = undoStyle !== null;
-      if (restoredStyle) { $("style").value = undoStyle; syncChips(); undoStyle = null; }
-      $("lyrics-write-status").textContent = restoredStyle ? "Previous lyrics and style restored." : "Previous lyrics restored.";
+      const restoredLyrics = undoText !== null, restoredStyle = undoStyle !== null;
+      if (!restoredLyrics && !restoredStyle) return;
+      if (restoredLyrics) setLyrics(undoText);
+      if (restoredStyle) { $("style").value = undoStyle; syncChips(); }
+      undoText = null; undoStyle = null;
+      $("lyrics-write-status").textContent = restoredLyrics && restoredStyle ? "Previous lyrics and style restored." : restoredLyrics ? "Previous lyrics restored." : "Previous style restored.";
       renderCreate();
     };
+    $("instrumental").addEventListener("change", renderCreate);
     $("concept").oninput = () => { wroteFromConcept = false; renderCreate(); };
   }
 

@@ -10,7 +10,7 @@ from unittest.mock import patch
 import httpx
 
 from studio import lyrics
-from studio.lyrics import MOOD_IDS, LyricsNotConfigured, LyricsUpstreamError, LyricsWriter, clean_lyrics
+from studio.lyrics import MOOD_IDS, LyricsNotConfigured, LyricsUpstreamError, LyricsWriter, clean_lyrics, clean_style
 from studio.vibe import load_catalog
 
 PNG = "data:image/png;base64,iVBORw0KGgo="
@@ -348,6 +348,156 @@ class LyricsApiTests(WriterFixture):
             response = asyncio.run(send())
         self.assertEqual(response.status_code, 200)
         self.assertEqual((response.json()["mood"], response.json()["visual"]), ("dreamy", "Synthetic scene"))
+
+
+class CleanStyleFixTests(unittest.TestCase):
+    def test_instrumental_survives_the_tag_limit(self):
+        reply = ", ".join(f"synthetic tag {i:02d} with extra words" for i in range(25))
+        style = clean_style(reply, instrumental=True)
+        tags = style.split(", ")
+        self.assertEqual(tags[-1], "instrumental")
+        self.assertLessEqual(len(tags), 20)
+        self.assertLessEqual(len(style), lyrics.MAX_STYLE_CHARS)
+
+    def test_instrumental_survives_the_character_limit(self):
+        reply = ", ".join(f"synthetic description number {i:02d} with many extra words for length" for i in range(15))
+        style = clean_style(reply, instrumental=True)
+        self.assertEqual(style.split(", ")[-1], "instrumental")
+        self.assertLessEqual(len(style), lyrics.MAX_STYLE_CHARS)
+        self.assertGreaterEqual(len(style.split(", ")), 3)
+
+    def test_instrumental_returned_by_the_model_stays_last(self):
+        reply = "instrumental, " + ", ".join(f"synthetic description number {i:02d} with many extra words for length"
+                                              for i in range(12))
+        style = clean_style(reply, instrumental=True)
+        self.assertEqual(style.count("instrumental"), 1)
+        self.assertTrue(style.endswith(", instrumental"))
+        self.assertLessEqual(len(style), lyrics.MAX_STYLE_CHARS)
+
+    def test_vocal_tags_match_whole_words_only(self):
+        reply = "trap beat, harmonica lead, harmonic minor, soft piano"
+        self.assertEqual(clean_style(reply, instrumental=True), reply + ", instrumental")
+
+    def test_vocal_words_and_harmony_alone_are_removed(self):
+        reply = ("warm female vocals, lead voice, backing singer, sung lines, choir, rapping, rap verse, "
+                 "harmonies, harmony vocals, harmony, soft piano, tape hiss, analog synth")
+        self.assertEqual(clean_style(reply, instrumental=True), "soft piano, tape hiss, analog synth, instrumental")
+
+    def test_vocal_tags_are_kept_for_sung_styles(self):
+        reply = "warm female vocals, soft piano, tape hiss"
+        self.assertEqual(clean_style(reply), reply)
+
+
+class CleanLyricsFixTests(unittest.TestCase):
+    def test_numbered_bare_headers_start_and_split_sections(self):
+        reply = ("Verse 1\nSynthetic line\n\nVerse 2\nSynthetic second line\n\n"
+                 "**Pre Chorus 2**\nSynthetic lift\n")
+        self.assertEqual(clean_lyrics(reply), "[Verse]\nSynthetic line\n\n[Verse]\nSynthetic second line\n\n"
+                                             "[Pre-Chorus]\nSynthetic lift")
+
+    def test_bracketed_headers_map_to_known_sections(self):
+        reply = ("[Verse 1: Narrator]\nSynthetic line\n\n[Chorus x2]\nSynthetic hook\n\n"
+                 "[Guitar solo]\nSynthetic solo\n\n[Post-Chorus]\nSynthetic tail\n\n[Final Chorus]\nSynthetic end\n")
+        self.assertEqual(clean_lyrics(reply), "[Verse]\nSynthetic line\n\n[Chorus]\nSynthetic hook\n\n"
+                                             "Synthetic solo\n\n[Chorus]\nSynthetic tail\n\n"
+                                             "[Chorus]\nSynthetic end")
+
+    def test_reasoning_after_a_missing_opening_tag_is_dropped(self):
+        reply = "Synthetic reasoning\nSynthetic more reasoning</think>\nVerse 1\nSynthetic line\n"
+        self.assertEqual(clean_lyrics(reply), "[Verse]\nSynthetic line")
+        self.assertEqual(clean_style("Synthetic reasoning</think>\nEnglish, soft piano, tape hiss"),
+                         "English, soft piano, tape hiss")
+
+    def test_performance_notes_are_not_mapped_by_substrings(self):
+        reply = ("[Verse]\nSynthetic line\n\n[Reverse cymbal swell]\nSynthetic swell\n\n"
+                 "[Introspective spoken part]\nSynthetic spoken\n")
+        self.assertEqual(clean_lyrics(reply), "[Verse]\nSynthetic line\n\nSynthetic swell\n\nSynthetic spoken")
+
+
+class SettingsFixTests(WriterFixture):
+    """Saved keys follow an http -> https upgrade, concurrent saves keep updates, moods are checked."""
+
+    def setUp(self):
+        super().setUp()
+        writer_patch = patch.object(lyrics, "_writer", self.writer); writer_patch.start(); self.addCleanup(writer_patch.stop)
+
+    def request(self, method, path, body=None):
+        from studio.app import app
+        async def send():
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://studio.test") as client:
+                return await client.request(method, path, json=body)
+        return asyncio.run(send())
+
+    def test_key_follows_an_https_upgrade_of_the_same_server(self):
+        self.configure(api_key="sk-synthetic")
+        self.assertTrue(self.writer.save({"base_url": "https://llm.test/v1"})["api_key_set"])
+        self.writer.generate(concept="Synthetic concept")
+        self.assertEqual(self.endpoint.requests[-1].headers["authorization"], "Bearer sk-synthetic")
+
+    def test_key_follows_explicit_default_ports_and_the_same_explicit_port(self):
+        for old_url, new_url in (("http://llm.test:80/v1", "https://llm.test:443/v1"),
+                                 ("http://llm.test/v1", "https://llm.test/v1"),
+                                 ("http://llm.test:8443/v1", "https://llm.test:8443/v1")):
+            with self.subTest(old_url=old_url, new_url=new_url):
+                self.writer.save({"base_url": old_url, "model": "model-a", "api_key": "sk-synthetic"})
+                self.assertTrue(self.writer.save({"base_url": new_url})["api_key_set"])
+
+    def test_other_hosts_ports_and_downgrades_drop_the_key(self):
+        for old_url, new_url in (("http://llm.test/v1", "https://other.test/v1"),
+                                 ("http://llm.test/v1", "https://llm.test:8443/v1"),
+                                 ("http://llm.test:8443/v1", "https://llm.test:9443/v1"),
+                                 ("https://llm.test/v1", "http://llm.test/v1")):
+            with self.subTest(old_url=old_url, new_url=new_url):
+                self.writer.save({"base_url": old_url, "model": "model-a", "api_key": "sk-synthetic"})
+                self.assertFalse(self.writer.save({"base_url": new_url})["api_key_set"])
+
+    def test_redirected_save_keeps_the_key_for_the_second_test(self):
+        self.assertEqual(self.request("POST", "/api/lyrics/settings",
+                                      {"base_url": "http://llm.test/v1", "model": "model-a",
+                                       "api_key": "sk-synthetic"}).status_code, 200)
+        # The client re-saves only the final address after a redirect.
+        self.assertEqual(self.request("POST", "/api/lyrics/settings",
+                                      {"base_url": "https://llm.test/v1"}).status_code, 200)
+        self.assertEqual(self.request("POST", "/api/lyrics/test").status_code, 200)
+        self.assertEqual(self.endpoint.requests[-1].headers["authorization"], "Bearer sk-synthetic")
+
+    def test_concurrent_saves_do_not_lose_updates(self):
+        import threading
+        self.configure()
+        entered, done = threading.Event(), threading.Event()
+        real = lyrics.normalize_base_url
+
+        def slow_normalize(value):
+            if not entered.is_set():
+                entered.set()
+                done.wait(0.5)  # The fix holds the lock here, so the other save cannot read the old state.
+            return real(value)
+
+        def save_url():
+            self.writer.save({"base_url": "https://llm.test/v1", "model": "model-b"})
+
+        def save_images():
+            self.writer.save({"supports_images": True})
+            done.set()
+
+        with patch("studio.lyrics.normalize_base_url", slow_normalize):
+            first = threading.Thread(target=save_url); first.start()
+            entered.wait(1)  # The first save has read the settings.
+            second = threading.Thread(target=save_images); second.start()
+            for thread in (first, second): thread.join(5)
+        self.assertFalse(any(thread.is_alive() for thread in (first, second)))
+        status = self.writer.status()
+        self.assertEqual((status["model"], status["supports_images"]), ("model-b", True))
+
+    def test_generate_rejects_an_unknown_mood(self):
+        self.configure()
+        response = self.request("POST", "/api/lyrics/generate", {"concept": "Synthetic", "mood": "synthetic-mood"})
+        self.assertEqual(response.status_code, 422)
+        self.assertIn("mood", response.json()["detail"])
+        self.assertEqual(self.request("POST", "/api/lyrics/generate",
+                                      {"concept": "Synthetic", "mood": "dreamy"}).status_code, 200)
+        self.assertEqual(self.request("POST", "/api/lyrics/generate",
+                                      {"concept": "Synthetic", "custom": "Synthetic theme"}).status_code, 200)
 
 
 if __name__ == "__main__":
