@@ -152,8 +152,8 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px;
 .advanced-help { position: relative; display: inline-grid; place-items: center; width: 16px; height: 16px; padding: 0; border: 1px solid var(--dim); border-radius: 50%; background: transparent; color: var(--muted); font: inherit; font-size: 10px; line-height: 1; cursor: help; }
 .advanced-help:hover, .advanced-help:focus-visible { border-color: var(--accent); color: var(--text); outline: none; }
 .advanced-help [role=tooltip] { display: none; position: absolute; left: 0; bottom: calc(100% + 9px); width: 250px; max-width: 70vw; padding: 11px 13px; border: 1px solid var(--line-2); border-radius: 8px; background: var(--panel-solid); color: var(--text); box-shadow: 0 8px 30px #0008; font-size: 12px; line-height: 1.55; font-weight: 400; text-align: left; white-space: normal; z-index: 35; }
-.advanced-help:hover [role=tooltip], .advanced-help:focus-visible [role=tooltip] { display: block; }
-#sliders .slider:nth-child(even) .advanced-help [role=tooltip] { left: auto; right: 0; }
+.advanced-help:hover [role=tooltip], .advanced-help:focus [role=tooltip] { display: block; }
+#sliders .slider:nth-child(even of :not([hidden])) .advanced-help [role=tooltip] { left: auto; right: 0; }
 .advanced > .field .label-row { justify-content: flex-start; }
 .slider .value { font-size: 12px; }
 .slider .value.default { color: var(--dim); font-weight: 500; }

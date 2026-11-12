@@ -4,602 +4,722 @@
     {
       "id": "rainy-neon-streets",
       "visual": "A solitary person crossing a rain-soaked city street at night, reflections of neon signs on the pavement, distant traffic and a quiet melancholic mood.",
-      "style": "Atmospheric melodic techno, melancholic analog synthesizers, deep pulsing bass, restrained electronic percussion, spacious reverb and a hypnotic nighttime progression."
+      "style": "Atmospheric melodic techno, melancholic analog synthesizers, deep pulsing bass, restrained electronic percussion, spacious reverb and a hypnotic nighttime progression.",
+      "mood": "melancholic"
     },
     {
       "id": "mountain-sunrise",
       "visual": "First sunlight spills over a peaceful mountain ridge, low clouds glow pink and gold, and a wide valley slowly comes into view.",
-      "style": "Hopeful cinematic ambient, warm piano, gentle acoustic guitar, soft strings, open vocal harmonies and a gradual uplifting build."
+      "style": "Hopeful cinematic ambient, warm piano, gentle acoustic guitar, soft strings, open vocal harmonies and a gradual uplifting build.",
+      "mood": "hopeful"
     },
     {
       "id": "stormy-ocean",
       "visual": "Dark storm clouds hang above a rough ocean, white waves break against black rocks and wind sweeps across the empty coast.",
-      "style": "Dramatic post-rock, distorted electric guitar swells, rolling toms, deep bass, minor-key piano and a powerful slow-building instrumental climax."
+      "style": "Dramatic post-rock, distorted electric guitar swells, rolling toms, deep bass, minor-key piano and a powerful slow-building instrumental climax.",
+      "mood": "epic"
     },
     {
       "id": "candlelit-room",
       "visual": "A small room is lit by candles, with a wooden table, a book and warm shadows against a quiet evening window.",
-      "style": "Intimate late-night jazz, mellow piano, upright bass, brushed drums, muted trumpet and a close, understated vocal."
+      "style": "Intimate late-night jazz, mellow piano, upright bass, brushed drums, muted trumpet and a close, understated vocal.",
+      "mood": "introspective"
     },
     {
       "id": "futuristic-city",
       "visual": "A vast futuristic city rises beneath a violet dusk sky, glass towers glow with electric blue lights and elevated trains cross the skyline.",
-      "style": "Driving synthwave, bright analog arpeggios, gated drums, a steady electronic bassline, soaring synth leads and a cinematic retro-futurist mix."
+      "style": "Driving synthwave, bright analog arpeggios, gated drums, a steady electronic bassline, soaring synth leads and a cinematic retro-futurist mix.",
+      "mood": "mysterious"
     },
     {
       "id": "desert-dunes",
       "visual": "Sunset stretches across a quiet desert of amber dunes, a winding trail disappears toward the horizon and the air feels dry and still.",
-      "style": "Psychedelic desert rock, dusty electric guitar, warm organ, loose live drums, rounded bass and a spacious, slow-burning groove."
+      "style": "Psychedelic desert rock, dusty electric guitar, warm organ, loose live drums, rounded bass and a spacious, slow-burning groove.",
+      "mood": "dreamy"
     },
     {
       "id": "dark-forest",
       "visual": "Tall dark trees crowd a misty forest path, faint light filters through the canopy and damp leaves cover the ground.",
-      "style": "Atmospheric doom metal, low tuned guitars, deliberate heavy drums, dark sustained strings, restrained vocals and a shadowy cinematic atmosphere."
+      "style": "Atmospheric doom metal, low tuned guitars, deliberate heavy drums, dark sustained strings, restrained vocals and a shadowy cinematic atmosphere.",
+      "mood": "mysterious"
     },
     {
       "id": "summer-beach",
       "visual": "Clear turquoise water meets a bright sandy beach, small waves sparkle in the sun and colorful umbrellas dot the shore.",
-      "style": "Sunny indie pop, bright acoustic guitar, buoyant bass, crisp handclaps, breezy vocal harmonies and a relaxed summer rhythm."
+      "style": "Sunny indie pop, bright acoustic guitar, buoyant bass, crisp handclaps, breezy vocal harmonies and a relaxed summer rhythm.",
+      "mood": "joyful"
     },
     {
       "id": "dramatic-peaks",
       "visual": "Sharp alpine peaks tower above a narrow valley under dramatic clouds, with a small climber visible on a steep path.",
-      "style": "Expansive alternative rock, ringing electric guitars, forceful live drums, melodic bass and an anthemic vocal that grows toward a wide chorus."
+      "style": "Expansive alternative rock, ringing electric guitars, forceful live drums, melodic bass and an anthemic vocal that grows toward a wide chorus.",
+      "mood": "epic"
     },
     {
       "id": "intimate-portrait",
       "visual": "A softly lit close portrait shows a thoughtful person looking away from the camera, with a calm expression and a simple neutral background.",
-      "style": "Warm contemporary soul, expressive close lead vocal, mellow electric piano, rounded bass, subtle drums and rich but restrained harmonies."
+      "style": "Warm contemporary soul, expressive close lead vocal, mellow electric piano, rounded bass, subtle drums and rich but restrained harmonies.",
+      "mood": "introspective"
     },
     {
       "id": "abstract-color",
       "visual": "Bold flowing shapes of orange, magenta, cyan and yellow overlap in an energetic abstract painting with visible brush texture.",
-      "style": "Playful art pop, bright synth accents, punchy electronic drums, elastic bass, layered vocal hooks and colorful shifting textures."
+      "style": "Playful art pop, bright synth accents, punchy electronic drums, elastic bass, layered vocal hooks and colorful shifting textures.",
+      "mood": "energetic"
     },
     {
       "id": "snowy-pines",
       "visual": "Snow rests on evergreen branches beside a frozen lake, pale winter light reflects on the ice and the landscape is still.",
-      "style": "Sparse neo-classical ambient, felt piano, soft cello, delicate high textures, slow spacious phrasing and a quiet reflective mood."
+      "style": "Sparse neo-classical ambient, felt piano, soft cello, delicate high textures, slow spacious phrasing and a quiet reflective mood.",
+      "mood": "peaceful"
     },
     {
       "id": "autumn-lane",
       "visual": "A tree-lined country lane is covered in red and gold leaves, with soft afternoon light and a bicycle leaning beside a fence.",
-      "style": "Nostalgic folk rock, fingerpicked acoustic guitar, warm bass, gentle drums, clear storytelling vocals and mellow harmonies."
+      "style": "Nostalgic folk rock, fingerpicked acoustic guitar, warm bass, gentle drums, clear storytelling vocals and mellow harmonies.",
+      "mood": "nostalgic"
     },
     {
       "id": "busy-market",
       "visual": "A crowded outdoor market is full of colorful fabric, baskets of fruit, handwritten signs and people moving between small stalls.",
-      "style": "Rhythmic global pop, hand percussion, bright plucked strings, melodic bass, lively call-and-response vocals and a danceable groove."
+      "style": "Rhythmic global pop, hand percussion, bright plucked strings, melodic bass, lively call-and-response vocals and a danceable groove.",
+      "mood": "joyful"
     },
     {
       "id": "quiet-library",
       "visual": "An old library has tall wooden shelves, a ladder, pools of window light and one empty chair beside a reading desk.",
-      "style": "Thoughtful chamber pop, soft piano, delicate strings, brushed percussion, intimate vocals and carefully layered acoustic details."
+      "style": "Thoughtful chamber pop, soft piano, delicate strings, brushed percussion, intimate vocals and carefully layered acoustic details.",
+      "mood": "introspective"
     },
     {
       "id": "city-rooftop",
       "visual": "Friends stand together on a rooftop above a city at blue hour, windows begin to glow and the skyline opens behind them.",
-      "style": "Uplifting dance pop, bright synth chords, firm four-on-the-floor drums, a warm bass pulse, group harmonies and a broad melodic chorus."
+      "style": "Uplifting dance pop, bright synth chords, firm four-on-the-floor drums, a warm bass pulse, group harmonies and a broad melodic chorus.",
+      "mood": "uplifting"
     },
     {
       "id": "old-train-station",
       "visual": "An almost empty historic train platform stretches into the distance, a clock hangs above the tracks and a single suitcase waits on a bench.",
-      "style": "Cinematic trip-hop, dusty breakbeats, low piano, deep sub bass, hazy strings and a restrained, wistful vocal."
+      "style": "Cinematic trip-hop, dusty breakbeats, low piano, deep sub bass, hazy strings and a restrained, wistful vocal.",
+      "mood": "nostalgic"
     },
     {
       "id": "wildflower-meadow",
       "visual": "A sunlit meadow is filled with wildflowers, tall grass moves in a light breeze and a soft hill rises in the distance.",
-      "style": "Gentle acoustic folk, fingerpicked guitar, light piano, soft harmonies, subtle percussion and an open pastoral warmth."
+      "style": "Gentle acoustic folk, fingerpicked guitar, light piano, soft harmonies, subtle percussion and an open pastoral warmth.",
+      "mood": "peaceful"
     },
     {
       "id": "industrial-night",
       "visual": "An abandoned industrial hall has concrete pillars, rusty machinery and a narrow strip of harsh light cutting through darkness.",
-      "style": "Industrial electronic music, gritty synth bass, metallic percussion, distorted pulses, sparse vocals and a tense mechanical build."
+      "style": "Industrial electronic music, gritty synth bass, metallic percussion, distorted pulses, sparse vocals and a tense mechanical build.",
+      "mood": "dark"
     },
     {
       "id": "coastal-cliffs",
       "visual": "A winding footpath follows high green coastal cliffs above a calm blue sea, with seabirds gliding through the open sky.",
-      "style": "Airy dream pop, shimmering guitar, soft analog pads, rounded bass, relaxed drums and floating vocal harmonies."
+      "style": "Airy dream pop, shimmering guitar, soft analog pads, rounded bass, relaxed drums and floating vocal harmonies.",
+      "mood": "uplifting"
     },
     {
       "id": "vintage-diner",
       "visual": "A small vintage diner glows with red booths and chrome details, rain dots the window and a cup of coffee sits on the counter.",
-      "style": "Retro rock and roll, twangy electric guitar, walking bass, lively piano, crisp snare and a confident lead vocal."
+      "style": "Retro rock and roll, twangy electric guitar, walking bass, lively piano, crisp snare and a confident lead vocal.",
+      "mood": "nostalgic"
     },
     {
       "id": "moonlit-lake",
       "visual": "A full moon reflects across a still lake, dark hills frame the water and a small wooden boat rests at the shore.",
-      "style": "Ethereal ambient pop, soft piano, deep gentle synth pads, minimal percussion, breathy vocals and a spacious nocturnal mix."
+      "style": "Ethereal ambient pop, soft piano, deep gentle synth pads, minimal percussion, breathy vocals and a spacious nocturnal mix.",
+      "mood": "dreamy"
     },
     {
       "id": "colorful-mural",
       "visual": "A large neighborhood mural shows layered geometric patterns and vivid figures across a sunlit brick wall on a lively street.",
-      "style": "Funky alternative pop, syncopated bass, crisp drums, bright brass stabs, rhythmic guitar and playful layered vocals."
+      "style": "Funky alternative pop, syncopated bass, crisp drums, bright brass stabs, rhythmic guitar and playful layered vocals.",
+      "mood": "joyful"
     },
     {
       "id": "ancient-ruins",
       "visual": "Weathered stone ruins stand on a grassy hill, distant mountains fade into haze and the late sun casts long shadows.",
-      "style": "Epic cinematic orchestral music, low strings, measured percussion, broad brass, a rising harmonic arc and a sense of ancient scale."
+      "style": "Epic cinematic orchestral music, low strings, measured percussion, broad brass, a rising harmonic arc and a sense of ancient scale.",
+      "mood": "mysterious"
     },
     {
       "id": "rainy-window",
       "visual": "Raindrops run down a bedroom window overlooking blurred city lights, with a soft lamp glowing inside the room.",
-      "style": "Lo-fi hip-hop, mellow electric piano, dusty sampled textures, soft swung drums, rounded bass and a calm late-night feel."
+      "style": "Lo-fi hip-hop, mellow electric piano, dusty sampled textures, soft swung drums, rounded bass and a calm late-night feel.",
+      "mood": "melancholic"
     },
     {
       "id": "race-track",
       "visual": "A sleek car speeds around a track at dusk, lights streak across the scene and the grandstands blur with motion.",
-      "style": "High-energy electronic rock, fast driving drums, distorted synth bass, sharp guitar riffs and urgent melodic vocals."
+      "style": "High-energy electronic rock, fast driving drums, distorted synth bass, sharp guitar riffs and urgent melodic vocals.",
+      "mood": "energetic"
     },
     {
       "id": "garden-party",
       "visual": "A small garden party takes place beneath string lights, flowers surround the table and guests gather in a warm evening breeze.",
-      "style": "Feel-good soul pop, bright piano, crisp live drums, warm bass, joyful backing vocals and an easy celebratory groove."
+      "style": "Feel-good soul pop, bright piano, crisp live drums, warm bass, joyful backing vocals and an easy celebratory groove.",
+      "mood": "romantic"
     },
     {
       "id": "foggy-harbor",
       "visual": "Fishing boats sit quietly in a foggy harbor, ropes and nets cover the dock and faint lamps glow through the mist.",
-      "style": "Maritime folk, acoustic guitar, accordion, steady hand percussion, earthy harmonies and a wistful wandering melody."
+      "style": "Maritime folk, acoustic guitar, accordion, steady hand percussion, earthy harmonies and a wistful wandering melody.",
+      "mood": "melancholic"
     },
     {
       "id": "bright-studio",
       "visual": "A clean white art studio is filled with canvases, scattered paintbrushes and a broad sunlit window overlooking trees.",
-      "style": "Modern indie rock, clean electric guitar, melodic bass, lively drums, conversational vocals and a bright polished band sound."
+      "style": "Modern indie rock, clean electric guitar, melodic bass, lively drums, conversational vocals and a bright polished band sound.",
+      "mood": "uplifting"
     },
     {
       "id": "canyon-river",
       "visual": "A clear river winds through a deep red-rock canyon, sunlight catches the cliff faces and the water bends out of sight.",
-      "style": "Organic progressive house, warm plucked synths, rolling percussion, deep melodic bass, airy pads and a patient expansive build."
+      "style": "Organic progressive house, warm plucked synths, rolling percussion, deep melodic bass, airy pads and a patient expansive build.",
+      "mood": "epic"
     },
     {
       "id": "abandoned-ballroom",
       "visual": "A grand ballroom stands empty, its old chandelier hangs above a dusty floor and faded gold details catch dim light.",
-      "style": "Haunting chamber jazz, slow piano, expressive upright bass, distant brushed drums, bowed strings and a smoky vocal."
+      "style": "Haunting chamber jazz, slow piano, expressive upright bass, distant brushed drums, bowed strings and a smoky vocal.",
+      "mood": "nostalgic"
     },
     {
       "id": "city-basketball",
       "visual": "A neighborhood basketball court is lit at night, the hoop casts a long shadow and apartment windows glow behind the fence.",
-      "style": "Confident hip-hop, punchy drums, deep 808 bass, sparse keys, crisp rhythmic delivery and a memorable melodic hook."
+      "style": "Confident hip-hop, punchy drums, deep 808 bass, sparse keys, crisp rhythmic delivery and a memorable melodic hook.",
+      "mood": "energetic"
     },
     {
       "id": "orchard-spring",
       "visual": "White blossoms cover orchard trees in spring, petals drift through gentle sunlight and rows of green trees lead toward a farmhouse.",
-      "style": "Light chamber folk, acoustic guitar, soft piano, delicate strings, warm vocal harmonies and a graceful mid-tempo pulse."
+      "style": "Light chamber folk, acoustic guitar, soft piano, delicate strings, warm vocal harmonies and a graceful mid-tempo pulse.",
+      "mood": "hopeful"
     },
     {
       "id": "volcanic-landscape",
       "visual": "A rugged volcanic plain of dark rock stretches beneath a glowing red horizon, with wisps of smoke rising in the distance.",
-      "style": "Heavy progressive metal, distorted guitar layers, intricate drums, dark synth atmosphere and dramatic dynamic shifts."
+      "style": "Heavy progressive metal, distorted guitar layers, intricate drums, dark synth atmosphere and dramatic dynamic shifts.",
+      "mood": "dark"
     },
     {
       "id": "subway-motion",
       "visual": "A subway train rushes through a station, fluorescent lights repeat overhead and commuters blur into streaks of motion.",
-      "style": "Urban electronic breakbeat, tight chopped drums, restless bass, short synth motifs and a focused modern production."
+      "style": "Urban electronic breakbeat, tight chopped drums, restless bass, short synth motifs and a focused modern production.",
+      "mood": "energetic"
     },
     {
       "id": "cottage-kitchen",
       "visual": "A cozy cottage kitchen has fresh bread on a wooden board, herbs by the window and soft morning light across the table.",
-      "style": "Comforting country folk, acoustic guitar, upright bass, gentle brushes, warm lead vocal and easy close harmonies."
+      "style": "Comforting country folk, acoustic guitar, upright bass, gentle brushes, warm lead vocal and easy close harmonies.",
+      "mood": "peaceful"
     },
     {
       "id": "glasshouse-rain",
       "visual": "Rain taps the roof of a glass greenhouse, lush leaves frame the view and droplets distort a garden outside.",
-      "style": "Textural downtempo electronica, soft granular pads, gentle electronic percussion, rounded bass and delicate melodic details."
+      "style": "Textural downtempo electronica, soft granular pads, gentle electronic percussion, rounded bass and delicate melodic details.",
+      "mood": "dreamy"
     },
     {
       "id": "fireworks-harbor",
       "visual": "Colorful fireworks burst above a waterfront at night, their reflections scatter across dark water and people watch from the pier.",
-      "style": "Euphoric festival EDM, bright supersaw chords, big drums, rising risers, a powerful drop and joyful vocal phrases."
+      "style": "Euphoric festival EDM, bright supersaw chords, big drums, rising risers, a powerful drop and joyful vocal phrases.",
+      "mood": "joyful"
     },
     {
       "id": "minimalist-interior",
       "visual": "A minimalist room has pale walls, one sculptural chair, clean lines and a sharp rectangle of afternoon light on the floor.",
-      "style": "Minimal electronic ambient, precise soft pulses, restrained piano, subtle bass, long clean reverbs and spacious negative space."
+      "style": "Minimal electronic ambient, precise soft pulses, restrained piano, subtle bass, long clean reverbs and spacious negative space.",
+      "mood": "introspective"
     },
     {
       "id": "street-skate",
       "visual": "A skateboarder rolls past colorful tags and concrete steps in an urban plaza, captured in a loose energetic afternoon scene.",
-      "style": "Skate punk, fast guitar power chords, driving live drums, urgent melodic vocals and a raw energetic mix."
+      "style": "Skate punk, fast guitar power chords, driving live drums, urgent melodic vocals and a raw energetic mix.",
+      "mood": "energetic"
     },
     {
       "id": "jungle-river-dawn",
       "visual": "A slow river runs through dense tropical vegetation at dawn, with heavy mist, wet leaves and small ripples in warm green light.",
-      "style": "Deep roots dub, spacious bass guitar, offbeat organ chords, restrained drums, tape echo and a warm unhurried groove."
+      "style": "Deep roots dub, spacious bass guitar, offbeat organ chords, restrained drums, tape echo and a warm unhurried groove.",
+      "mood": "mysterious"
     },
     {
       "id": "monochrome-architecture",
       "visual": "Repeated concrete columns fade into a grey urban distance, with fine rain and a restrained geometric composition.",
-      "style": "Dub techno, muted chord stabs, rolling sub bass, minimal percussion, long filtered delays and patient atmospheric development."
+      "style": "Dub techno, muted chord stabs, rolling sub bass, minimal percussion, long filtered delays and patient atmospheric development.",
+      "mood": "melancholic"
     },
     {
       "id": "sunset-marina",
       "visual": "Small boats rock in a quiet marina under peach sunset skies, with soft reflections and an easy evening breeze.",
-      "style": "Balearic house, rounded bass, relaxed four-on-the-floor drums, nylon guitar, airy keys and a sunlit spacious mix."
+      "style": "Balearic house, rounded bass, relaxed four-on-the-floor drums, nylon guitar, airy keys and a sunlit spacious mix.",
+      "mood": "peaceful"
     },
     {
       "id": "warehouse-strobe",
       "visual": "A crowded concrete warehouse is cut by sharp green lights, dark corners and fast repeated bands of movement.",
-      "style": "Acid techno, resonant analog bass sequences, driving kick drums, clipped percussion, rising filters and a raw club mix."
+      "style": "Acid techno, resonant analog bass sequences, driving kick drums, clipped percussion, rising filters and a raw club mix.",
+      "mood": "energetic"
     },
     {
       "id": "night-airport",
       "visual": "An almost empty airport terminal glows under clean white lights, with glass walls and repeating floor markings.",
-      "style": "Minimal techno, precise electronic percussion, restrained sub bass, small rhythmic motifs and a clean spacious arrangement."
+      "style": "Minimal techno, precise electronic percussion, restrained sub bass, small rhythmic motifs and a clean spacious arrangement.",
+      "mood": "introspective"
     },
     {
       "id": "electric-bike-trails",
       "visual": "Long trails of bicycle lights curve through a blue city park, with crisp reflections and quick angular turns.",
-      "style": "Electro, syncopated drum machines, rubbery synth bass, robotic melodic fragments and sharply defined stereo space."
+      "style": "Electro, syncopated drum machines, rubbery synth bass, robotic melodic fragments and sharply defined stereo space.",
+      "mood": "dreamy"
     },
     {
       "id": "elevated-motorway",
       "visual": "An elevated motorway crosses an urban skyline at dusk, with orderly traffic streams and warm windows in distant towers.",
-      "style": "Detroit techno, soulful synth chords, steady electronic drums, a rolling bassline and a hopeful futuristic progression."
+      "style": "Detroit techno, soulful synth chords, steady electronic drums, a rolling bassline and a hopeful futuristic progression.",
+      "mood": "introspective"
     },
     {
       "id": "prismatic-sculpture",
       "visual": "An illuminated sculpture bends colored light into intricate repeating shapes, reflections and unexpected angles.",
-      "style": "Intelligent dance music, intricate broken beats, evolving digital textures, melodic micro-sequences and detailed spatial production."
+      "style": "Intelligent dance music, intricate broken beats, evolving digital textures, melodic micro-sequences and detailed spatial production.",
+      "mood": "dreamy"
     },
     {
       "id": "fractured-glass",
       "visual": "A close view of broken glass catches tiny flashes of colored light in an irregular fragmented pattern.",
-      "style": "Glitch electronica, granular percussion, chopped melodic fragments, deep electronic bass and precise contrasting silences."
+      "style": "Glitch electronica, granular percussion, chopped melodic fragments, deep electronic bass and precise contrasting silences.",
+      "mood": "dark"
     },
     {
       "id": "commuter-reflections",
       "visual": "Commuters pass through a tiled station, their reflections overlapping with blue light and warm moving silhouettes.",
-      "style": "UK garage, swinging two-step drums, rounded sub bass, bright keyboard chords and concise soulful vocal phrases."
+      "style": "UK garage, swinging two-step drums, rounded sub bass, bright keyboard chords and concise soulful vocal phrases.",
+      "mood": "introspective"
     },
     {
       "id": "arcade-night",
       "visual": "A lively arcade glows pink and cyan, with animated screens, bright plastic controls and playful reflected light.",
-      "style": "Future bass, bright stacked synthesizers, elastic bass drops, syncopated electronic drums and playful vocal textures."
+      "style": "Future bass, bright stacked synthesizers, elastic bass drops, syncopated electronic drums and playful vocal textures.",
+      "mood": "energetic"
     },
     {
       "id": "misty-night-platform",
       "visual": "A deserted platform dissolves into fog beneath distant lamps, with damp concrete and a few blurred city lights.",
-      "style": "Future garage, shuffled quiet drums, deep sub bass, distant vocal textures and a reflective nocturnal atmosphere."
+      "style": "Future garage, shuffled quiet drums, deep sub bass, distant vocal textures and a reflective nocturnal atmosphere.",
+      "mood": "melancholic"
     },
     {
       "id": "open-air-dance-sunrise",
       "visual": "A small crowd dances on an open grassy hillside as daylight reaches misty hills and pale golden clouds.",
-      "style": "Liquid drum and bass, flowing breakbeats, warm rolling bass, soulful keys, airy pads and a gentle uplifting melody."
+      "style": "Liquid drum and bass, flowing breakbeats, warm rolling bass, soulful keys, airy pads and a gentle uplifting melody.",
+      "mood": "uplifting"
     },
     {
       "id": "high-speed-tunnel",
       "visual": "A train rushes through a dark tunnel, with metallic lines, rapid light pulses and intense forward motion.",
-      "style": "Neurofunk drum and bass, tight complex breakbeats, modulated bass textures, sharp percussion and a tense futuristic mix."
+      "style": "Neurofunk drum and bass, tight complex breakbeats, modulated bass textures, sharp percussion and a tense futuristic mix.",
+      "mood": "energetic"
     },
     {
       "id": "tropical-downpour",
       "visual": "Heavy rain strikes broad leaves in a vivid rainforest, with intersecting streams and constant lively movement.",
-      "style": "Jungle, chopped rolling breakbeats, deep dub bass, bright atmospheric pads and organic percussion details."
+      "style": "Jungle, chopped rolling breakbeats, deep dub bass, bright atmospheric pads and organic percussion details.",
+      "mood": "energetic"
     },
     {
       "id": "boardwalk-evening",
       "visual": "Friends move along a seaside boardwalk at twilight, with warm shop lights and an easy springing rhythm of footsteps.",
-      "style": "Two-step soul, shuffled electronic drums, warm electric piano, buoyant bass and intimate melodic vocals."
+      "style": "Two-step soul, shuffled electronic drums, warm electric piano, buoyant bass and intimate melodic vocals.",
+      "mood": "joyful"
     },
     {
       "id": "tokyo-evening",
       "visual": "An evening shopping street combines glowing signs, tidy storefronts and bright reflections from passing taxis.",
-      "style": "Japanese city pop, polished electric piano, melodic slap bass, clean rhythm guitar, bright brass and an elegant retro groove."
+      "style": "Japanese city pop, polished electric piano, melodic slap bass, clean rhythm guitar, bright brass and an elegant retro groove.",
+      "mood": "dreamy"
     },
     {
       "id": "seoul-light-show",
       "visual": "A polished urban plaza is filled with coordinated lights, bold fashion colors and an energetic evening crowd.",
-      "style": "Contemporary Korean dance pop, crisp electronic drums, layered synth hooks, punchy bass and sharply contrasted vocal sections."
+      "style": "Contemporary Korean dance pop, crisp electronic drums, layered synth hooks, punchy bass and sharply contrasted vocal sections.",
+      "mood": "energetic"
     },
     {
       "id": "faded-videotape",
       "visual": "A faded home-video scene shows an empty shopping mall in soft pastel colors with blurred edges and nostalgic light.",
-      "style": "Vaporwave, slowed electric piano loops, soft synth pads, tape drift, gentle electronic drums and a hazy nostalgic mix."
+      "style": "Vaporwave, slowed electric piano loops, soft synth pads, tape drift, gentle electronic drums and a hazy nostalgic mix.",
+      "mood": "nostalgic"
     },
     {
       "id": "pixel-game-world",
       "visual": "A colorful pixel illustration shows a tiny explorer crossing floating platforms beneath a bright geometric sky.",
-      "style": "Chiptune pop, sparkling pulse-wave melodies, arpeggiated digital chords, bouncy electronic bass and compact playful drums."
+      "style": "Chiptune pop, sparkling pulse-wave melodies, arpeggiated digital chords, bouncy electronic bass and compact playful drums.",
+      "mood": "joyful"
     },
     {
       "id": "bioluminescent-waves",
       "visual": "Blue glowing waves break under a vast starry sky, with sweeping light patterns and a luminous distant horizon.",
-      "style": "Progressive trance, soaring synthesizer melodies, pulsing bass, spacious pads and a gradual luminous build."
+      "style": "Progressive trance, soaring synthesizer melodies, pulsing bass, spacious pads and a gradual luminous build.",
+      "mood": "dreamy"
     },
     {
       "id": "stadium-light-beams",
       "visual": "Powerful beams of light rise above a stadium crowd, with bold symmetrical shapes and explosive bursts of color.",
-      "style": "Melodic hardstyle, emphatic electronic kicks, dramatic synth leads, driving bass and an expansive festival arrangement."
+      "style": "Melodic hardstyle, emphatic electronic kicks, dramatic synth leads, driving bass and an expansive festival arrangement.",
+      "mood": "epic"
     },
     {
       "id": "psychedelic-rock-desert",
       "visual": "Black desert rocks and surreal luminous patterns stretch beneath a vivid sky, with intricate repeating shadows.",
-      "style": "Psytrance, tightly rolling electronic bass, precise kick drums, spiraling synth sequences and detailed psychedelic textures."
+      "style": "Psytrance, tightly rolling electronic bass, precise kick drums, spiraling synth sequences and detailed psychedelic textures.",
+      "mood": "mysterious"
     },
     {
       "id": "desert-moon-camp",
       "visual": "A small camp rests beneath a huge moon over silent dunes, with dim lanterns and immense empty space.",
-      "style": "Psybient, slow electronic rhythms, deep rounded bass, drifting pads, subtle hand percussion and spacious nocturnal textures."
+      "style": "Psybient, slow electronic rhythms, deep rounded bass, drifting pads, subtle hand percussion and spacious nocturnal textures.",
+      "mood": "mysterious"
     },
     {
       "id": "empty-observatory",
       "visual": "An isolated observatory faces a vast dark sky with distant stars and almost no visible movement.",
-      "style": "Space ambient, long evolving synthesizer tones, soft low drones, sparse bell-like notes and an expansive beatless arrangement."
+      "style": "Space ambient, long evolving synthesizer tones, soft low drones, sparse bell-like notes and an expansive beatless arrangement.",
+      "mood": "introspective"
     },
     {
       "id": "aurora-satellite",
       "visual": "A satellite floats above a luminous aurora and the curved blue edge of the Earth, silent and immense.",
-      "style": "Cinematic drone, slowly shifting string textures, deep sustained tones, distant shimmering harmonics and immense spatial depth."
+      "style": "Cinematic drone, slowly shifting string textures, deep sustained tones, distant shimmering harmonics and immense spatial depth.",
+      "mood": "dreamy"
     },
     {
       "id": "colorful-street-parade",
       "visual": "A cheerful street parade moves past brightly painted houses, with fluttering flags and lively groups of dancers.",
-      "style": "Upbeat ska, offbeat electric guitar, walking bass, bright horn riffs and energetic live drums."
+      "style": "Upbeat ska, offbeat electric guitar, walking bass, bright horn riffs and energetic live drums.",
+      "mood": "joyful"
     },
     {
       "id": "new-orleans-corner",
       "visual": "A small brass group plays on a sunny street corner as neighbors dance beside colorful old buildings.",
-      "style": "New Orleans second-line funk, lively brass, syncopated snare drums, tuba bass and a loose joyful street-band feel."
+      "style": "New Orleans second-line funk, lively brass, syncopated snare drums, tuba bass and a loose joyful street-band feel.",
+      "mood": "joyful"
     },
     {
       "id": "smoky-jazz-cellar",
       "visual": "A crowded cellar stage glows under amber lamps, with closely placed instruments and quick expressive gestures.",
-      "style": "Bebop jazz, nimble saxophone, acoustic piano, walking upright bass and lively improvisational drums."
+      "style": "Bebop jazz, nimble saxophone, acoustic piano, walking upright bass and lively improvisational drums.",
+      "mood": "romantic"
     },
     {
       "id": "quiet-dusk-boulevard",
       "visual": "A nearly empty boulevard stretches beneath pale dusk light, with long shadows and a calm elegant city skyline.",
-      "style": "Cool jazz, restrained saxophone, mellow piano, brushed drums, upright bass and a clear understated live mix."
+      "style": "Cool jazz, restrained saxophone, mellow piano, brushed drums, upright bass and a clear understated live mix.",
+      "mood": "melancholic"
     },
     {
       "id": "latin-dance-hall",
       "visual": "Couples turn across a polished dance floor under warm lights, with colorful clothing and lively social movement.",
-      "style": "Salsa, interlocking piano patterns, bright brass, tumbling congas, dancing bass and energetic ensemble vocals."
+      "style": "Salsa, interlocking piano patterns, bright brass, tumbling congas, dancing bass and energetic ensemble vocals.",
+      "mood": "romantic"
     },
     {
       "id": "ocean-balcony",
       "visual": "An open balcony overlooks a quiet blue sea, with linen curtains, dappled sunlight and relaxed afternoon shadows.",
-      "style": "Bossa nova, gentle nylon guitar, soft piano, restrained hand percussion, upright bass and intimate airy vocals."
+      "style": "Bossa nova, gentle nylon guitar, soft piano, restrained hand percussion, upright bass and intimate airy vocals.",
+      "mood": "peaceful"
     },
     {
       "id": "rainy-spanish-courtyard",
       "visual": "Rain shines on the tiles of an enclosed courtyard, with arched doorways and dramatic warm shadows.",
-      "style": "Flamenco fusion, expressive nylon guitar, handclaps, cajon, warm bass and a passionate dynamic vocal arrangement."
+      "style": "Flamenco fusion, expressive nylon guitar, handclaps, cajon, warm bass and a passionate dynamic vocal arrangement.",
+      "mood": "romantic"
     },
     {
       "id": "carnival-feathers",
       "visual": "A carnival procession fills the street with bright feathers, glittering fabrics and flowing circular movement.",
-      "style": "Samba, layered Brazilian percussion, rhythmic acoustic guitar, lively bass and bright call-and-response vocals."
+      "style": "Samba, layered Brazilian percussion, rhythmic acoustic guitar, lively bass and bright call-and-response vocals.",
+      "mood": "joyful"
     },
     {
       "id": "old-dance-studio",
       "visual": "Two dancers hold a poised dramatic shape in an old wooden studio with a dark mirrored wall and red afternoon light.",
-      "style": "Argentine tango, expressive bandoneon, rhythmic piano, bowed strings and dramatic pauses between melodic phrases."
+      "style": "Argentine tango, expressive bandoneon, rhythmic piano, bowed strings and dramatic pauses between melodic phrases.",
+      "mood": "romantic"
     },
     {
       "id": "prairie-porch",
       "visual": "People gather on a wooden porch overlooking open fields at sunset, with worn instruments and warm rustic colors.",
-      "style": "Bluegrass, bright acoustic guitar, rolling banjo, nimble fiddle, upright bass and close vocal harmonies."
+      "style": "Bluegrass, bright acoustic guitar, rolling banjo, nimble fiddle, upright bass and close vocal harmonies.",
+      "mood": "nostalgic"
     },
     {
       "id": "roadhouse-neon",
       "visual": "A small roadside bar glows beneath a dusty red neon sign, with weathered wood and a lonely open highway.",
-      "style": "Blues rock, expressive electric guitar, warm organ, grounded bass, steady live drums and a raw smoky vocal."
+      "style": "Blues rock, expressive electric guitar, warm organ, grounded bass, steady live drums and a raw smoky vocal.",
+      "mood": "melancholic"
     },
     {
       "id": "sunlit-chapel",
       "visual": "Sunlight enters a small chapel through open windows as a group gathers in a warm welcoming room.",
-      "style": "Contemporary gospel, expressive piano, rich choir harmonies, warm bass and a gradual uplifting live-band build."
+      "style": "Contemporary gospel, expressive piano, rich choir harmonies, warm bass and a gradual uplifting live-band build.",
+      "mood": "hopeful"
     },
     {
       "id": "velvet-small-stage",
       "visual": "A small stage with deep velvet curtains is lit by one warm spotlight, creating an intimate richly colored setting.",
-      "style": "Neo soul, warm Rhodes chords, relaxed pocket drums, fluid bass, subtle guitar and expressive close lead vocals."
+      "style": "Neo soul, warm Rhodes chords, relaxed pocket drums, fluid bass, subtle guitar and expressive close lead vocals.",
+      "mood": "romantic"
     },
     {
       "id": "monochrome-cinema",
       "visual": "A rain-soaked monochrome city scene shows long shadows, an old car and a single bright window.",
-      "style": "Cinematic noir jazz, muted trumpet, low piano, brushed drums, bowed bass and dark orchestral accents."
+      "style": "Cinematic noir jazz, muted trumpet, low piano, brushed drums, bowed bass and dark orchestral accents.",
+      "mood": "mysterious"
     },
     {
       "id": "gilded-palace",
       "visual": "An ornate palace room displays repeating golden patterns, tall windows and delicately balanced formal details.",
-      "style": "Baroque chamber music, interweaving strings, harpsichord, graceful melodic counterpoint and a light acoustic sound."
+      "style": "Baroque chamber music, interweaving strings, harpsichord, graceful melodic counterpoint and a light acoustic sound.",
+      "mood": "epic"
     },
     {
       "id": "sunlit-conservatory",
       "visual": "Soft morning sunlight falls across a piano and translucent curtains, with pale gardens visible through tall windows.",
-      "style": "Impressionist piano music, flowing acoustic piano, delicate string colors, gentle harmonic movement and natural room ambience."
+      "style": "Impressionist piano music, flowing acoustic piano, delicate string colors, gentle harmonic movement and natural room ambience.",
+      "mood": "peaceful"
     },
     {
       "id": "cathedral-vaults",
       "visual": "Tall cathedral vaults rise above a quiet stone floor, with shafts of light and a feeling of suspended time.",
-      "style": "Sacred choral ambient, layered human voices, restrained pipe organ, sustained string tones and long natural reverberation."
+      "style": "Sacred choral ambient, layered human voices, restrained pipe organ, sustained string tones and long natural reverberation.",
+      "mood": "epic"
     },
     {
       "id": "silent-film-street",
       "visual": "An old-fashioned illustrated street shows busy pedestrians, small shops and exaggerated playful movement.",
-      "style": "Ragtime, syncopated upright piano, light acoustic bass, small percussion and a lively theatrical rhythm."
+      "style": "Ragtime, syncopated upright piano, light acoustic bass, small percussion and a lively theatrical rhythm.",
+      "mood": "nostalgic"
     },
     {
       "id": "golden-savanna",
       "visual": "Golden grass ripples across an open savanna under warm sunlight, with graceful distant silhouettes and a broad clear sky.",
-      "style": "Afrobeats, interlocking guitar motifs, warm bass, syncopated percussion and a relaxed melodic vocal groove."
+      "style": "Afrobeats, interlocking guitar motifs, warm bass, syncopated percussion and a relaxed melodic vocal groove.",
+      "mood": "uplifting"
     },
     {
       "id": "patterned-night-dance",
       "visual": "A night gathering is filled with intricate textile patterns, soft colored light and grounded flowing dance movements.",
-      "style": "Amapiano, resonant log-drum bass, spacious keys, shuffled percussion and a patient hypnotic dance progression."
+      "style": "Amapiano, resonant log-drum bass, spacious keys, shuffled percussion and a patient hypnotic dance progression.",
+      "mood": "energetic"
     },
     {
       "id": "desert-caravan",
       "visual": "A caravan crosses a broad dusty plain, with swaying fabrics, warm shadows and a steady repeated walking rhythm.",
-      "style": "Gnawa-inspired fusion, deep plucked guembri bass, metallic hand percussion, cyclical melodies and a grounded trance-like groove."
+      "style": "Gnawa-inspired fusion, deep plucked guembri bass, metallic hand percussion, cyclical melodies and a grounded trance-like groove.",
+      "mood": "mysterious"
     },
     {
       "id": "lantern-courtyard",
       "visual": "Lanterns illuminate a stone courtyard with patterned tiles, a small fountain and warm intimate shadows.",
-      "style": "Arabic acoustic fusion, expressive oud, soft qanun, frame drums, warm bass and flowing ornamented melodies."
+      "style": "Arabic acoustic fusion, expressive oud, soft qanun, frame drums, warm bass and flowing ornamented melodies.",
+      "mood": "romantic"
     },
     {
       "id": "monsoon-city-colors",
       "visual": "Rain falls over a vividly painted city street, with flowing fabrics, busy movement and warm reflected lights.",
-      "style": "Indian contemporary fusion, tabla rhythms, expressive plucked strings, warm electronic bass and intricate melodic development."
+      "style": "Indian contemporary fusion, tabla rhythms, expressive plucked strings, warm electronic bass and intricate melodic development.",
+      "mood": "energetic"
     },
     {
       "id": "bamboo-water-garden",
       "visual": "Water moves gently through a bamboo garden beside pale stones, with small ripples and careful empty spaces.",
-      "style": "Japanese acoustic ambient, soft koto, breathy bamboo flute, restrained percussion and spacious natural acoustic textures."
+      "style": "Japanese acoustic ambient, soft koto, breathy bamboo flute, restrained percussion and spacious natural acoustic textures.",
+      "mood": "peaceful"
     },
     {
       "id": "mountain-temple-mist",
       "visual": "A quiet tiled temple rests among misty mountain trees, with curved roofs and restrained earthy colors.",
-      "style": "Korean acoustic ambient, delicate gayageum, low bowed strings, gentle hand percussion and slow contemplative melodic phrases."
+      "style": "Korean acoustic ambient, delicate gayageum, low bowed strings, gentle hand percussion and slow contemplative melodic phrases.",
+      "mood": "peaceful"
     },
     {
       "id": "andean-hillside-market",
       "visual": "A hillside market overlooks high mountains, with bright woven cloth, busy footpaths and clear crisp daylight.",
-      "style": "Andean folk fusion, airy panpipes, bright charango, acoustic guitar, grounded hand drums and open melodic phrases."
+      "style": "Andean folk fusion, airy panpipes, bright charango, acoustic guitar, grounded hand drums and open melodic phrases.",
+      "mood": "joyful"
     },
     {
       "id": "celtic-stone-circle",
       "visual": "A small stone circle stands in green rolling hills beneath drifting mist and pale morning light.",
-      "style": "Celtic folk, lyrical fiddle, gentle whistle, acoustic guitar, frame drum and warm close vocal harmonies."
+      "style": "Celtic folk, lyrical fiddle, gentle whistle, acoustic guitar, frame drum and warm close vocal harmonies.",
+      "mood": "mysterious"
     },
     {
       "id": "nordic-fjord-dusk",
       "visual": "Dark water reflects steep fjord walls at dusk, with a tiny wooden boat and a wide muted northern sky.",
-      "style": "Nordic folk, bowed acoustic strings, low hand drums, soft drones and a sparse solemn vocal melody."
+      "style": "Nordic folk, bowed acoustic strings, low hand drums, soft drones and a sparse solemn vocal melody.",
+      "mood": "melancholic"
     },
     {
       "id": "snowy-village-square",
       "visual": "A snowy village square is filled with warm windows, twisting narrow lanes and a small lively group of musicians.",
-      "style": "Klezmer, expressive clarinet, nimble violin, accordion, upright bass and a playful shifting dance rhythm."
+      "style": "Klezmer, expressive clarinet, nimble violin, accordion, upright bass and a playful shifting dance rhythm.",
+      "mood": "nostalgic"
     },
     {
       "id": "balkan-courtyard-party",
       "visual": "A lively courtyard celebration has bright brass instruments, crowded tables and quick spinning dancers.",
-      "style": "Balkan brass, punchy trumpet lines, low brass bass, energetic percussion and asymmetric dance rhythms."
+      "style": "Balkan brass, punchy trumpet lines, low brass bass, energetic percussion and asymmetric dance rhythms.",
+      "mood": "joyful"
     },
     {
       "id": "colorful-kitchen-gathering",
       "visual": "A crowded kitchen gathering glows with bright decorations, steaming food and relaxed joyful movement.",
-      "style": "Cumbia, dancing accordion, rounded bass, light guitar, shakers and a buoyant interlocking percussion groove."
+      "style": "Cumbia, dancing accordion, rounded bass, light guitar, shakers and a buoyant interlocking percussion groove.",
+      "mood": "joyful"
     },
     {
       "id": "late-night-dance-floor",
       "visual": "A compact night-time dance floor glows red and purple, with close silhouettes and a steady rolling movement.",
-      "style": "Melodic reggaeton, restrained dembow drums, rounded electronic bass, warm keyboard hooks and clear rhythmic vocals."
+      "style": "Melodic reggaeton, restrained dembow drums, rounded electronic bass, warm keyboard hooks and clear rhythmic vocals.",
+      "mood": "romantic"
     },
     {
       "id": "beach-dance-evening",
       "visual": "A couple dances slowly on a wooden seaside terrace under warm string lights and a darkening sky.",
-      "style": "Bachata, bright melodic guitar, soft syncopated percussion, warm bass and an intimate expressive vocal."
+      "style": "Bachata, bright melodic guitar, soft syncopated percussion, warm bass and an intimate expressive vocal.",
+      "mood": "romantic"
     },
     {
       "id": "tropical-horizon",
       "visual": "A clear tropical horizon glows beneath peach skies, with palm silhouettes and softly rippling turquoise water.",
-      "style": "Tropical house, light plucked synths, soft electronic drums, rounded bass and relaxed uplifting melodic hooks."
+      "style": "Tropical house, light plucked synths, soft electronic drums, rounded bass and relaxed uplifting melodic hooks.",
+      "mood": "peaceful"
     },
     {
       "id": "glacial-cavern",
       "visual": "A deep ice cavern shows pale blue light trapped in dark translucent walls, with long cold shadows.",
-      "style": "Dark ambient, low resonant drones, glassy overtones, sparse metallic echoes and slow spacious movement."
+      "style": "Dark ambient, low resonant drones, glassy overtones, sparse metallic echoes and slow spacious movement.",
+      "mood": "mysterious"
     },
     {
       "id": "rusted-scrap-forms",
       "visual": "A tangle of rusted metal catches harsh light, with rough textures, broken painted surfaces and angular shadows.",
-      "style": "Experimental noise rock, abrasive electric guitar, irregular live drums, heavy bass and raw contrasting textures."
+      "style": "Experimental noise rock, abrasive electric guitar, irregular live drums, heavy bass and raw contrasting textures.",
+      "mood": "dark"
     },
     {
       "id": "crumbling-concrete",
       "visual": "Massive crumbling concrete walls loom beneath a heavy sky, with dust, dark fissures and a slow oppressive atmosphere.",
-      "style": "Sludge metal, thick distorted guitar, heavy low bass, slow emphatic drums and a raw dense live sound."
+      "style": "Sludge metal, thick distorted guitar, heavy low bass, slow emphatic drums and a raw dense live sound.",
+      "mood": "dark"
     },
     {
       "id": "interlocking-staircases",
       "visual": "A photograph of interlocking staircases creates precise unexpected angles and repeated changes in direction.",
-      "style": "Math rock, intricate clean guitar patterns, agile bass, shifting drum accents and tightly interwoven rhythmic phrases."
+      "style": "Math rock, intricate clean guitar patterns, agile bass, shifting drum accents and tightly interwoven rhythmic phrases.",
+      "mood": "mysterious"
     },
     {
       "id": "sun-baked-stone",
       "visual": "Sun-baked stone towers rise above a dusty landscape, with rough orange textures and dense heat-haze shadows.",
-      "style": "Stoner rock, warm fuzz guitar, thick electric bass, heavy swinging drums and a slow expansive riff progression."
+      "style": "Stoner rock, warm fuzz guitar, thick electric bass, heavy swinging drums and a slow expansive riff progression.",
+      "mood": "epic"
     },
     {
       "id": "intense-concert-pit",
       "visual": "A fast-moving concert crowd surrounds a stark red stage, with sharp gestures and intense bursts of light.",
-      "style": "Thrash metal, tight fast guitar riffs, driving double-kick drums, articulate bass and an energetic aggressive live arrangement."
+      "style": "Thrash metal, tight fast guitar riffs, driving double-kick drums, articulate bass and an energetic aggressive live arrangement.",
+      "mood": "energetic"
     },
     {
       "id": "ornate-night-cathedral",
       "visual": "An ornate cathedral rises against a dramatic night sky, with stained glass, swirling clouds and deep crimson light.",
-      "style": "Symphonic metal, layered electric guitars, orchestral strings, dramatic choir colors and powerful melodic vocals."
+      "style": "Symphonic metal, layered electric guitars, orchestral strings, dramatic choir colors and powerful melodic vocals.",
+      "mood": "dark"
     },
     {
       "id": "frozen-moonlit-woods",
       "visual": "Moonlight crosses a frozen woodland with stark bare branches, drifting snow and a remote severe atmosphere.",
-      "style": "Atmospheric black metal, tremolo guitar textures, distant layered vocals, fast rolling drums and cold expansive ambience."
+      "style": "Atmospheric black metal, tremolo guitar textures, distant layered vocals, fast rolling drums and cold expansive ambience.",
+      "mood": "dark"
     },
     {
       "id": "cosmic-nebula-geometry",
       "visual": "A vivid nebula surrounds intricate geometric structures, with complex glowing layers and a sense of vast shifting scale.",
-      "style": "Technical progressive metal, articulate extended-range guitar, polyrhythmic drums, fluid bass and contrasting atmospheric keyboards."
+      "style": "Technical progressive metal, articulate extended-range guitar, polyrhythmic drums, fluid bass and contrasting atmospheric keyboards.",
+      "mood": "epic"
     },
     {
       "id": "velvet-masquerade",
       "visual": "A theatrical masked figure stands against dark velvet and dramatic gold light, with ornate richly layered details.",
-      "style": "Gothic orchestral rock, dramatic piano, bowed strings, deep electric guitar and an expressive theatrical lead vocal."
+      "style": "Gothic orchestral rock, dramatic piano, bowed strings, deep electric guitar and an expressive theatrical lead vocal.",
+      "mood": "mysterious"
     },
     {
       "id": "dappled-out-of-focus",
       "visual": "An intentionally blurred photograph turns sunlight and leaves into soft overlapping patches of luminous color.",
-      "style": "Shoegaze, layered washed electric guitars, soft melodic bass, steady drums and airy vocals within a wide hazy mix."
+      "style": "Shoegaze, layered washed electric guitars, soft melodic bass, steady drums and airy vocals within a wide hazy mix.",
+      "mood": "dreamy"
     },
     {
       "id": "bright-school-gym",
       "visual": "A brightly decorated school gym holds a small energetic band, with colorful posters and carefree youthful movement.",
-      "style": "Pop punk, bright overdriven guitar, driving bass, punchy fast drums and a melodic singalong chorus."
+      "style": "Pop punk, bright overdriven guitar, driving bass, punchy fast drums and a melodic singalong chorus.",
+      "mood": "uplifting"
     },
     {
       "id": "small-basement-stage",
       "visual": "A tiny basement stage is surrounded by handwritten posters, dim warm lights and an emotionally engaged crowd.",
-      "style": "Emo alternative rock, expressive clean-to-distorted guitars, dynamic live drums, melodic bass and contrasting intimate and expansive vocals."
+      "style": "Emo alternative rock, expressive clean-to-distorted guitars, dynamic live drums, melodic bass and contrasting intimate and expansive vocals.",
+      "mood": "introspective"
     },
     {
       "id": "desert-village-evening",
       "visual": "An earth-colored desert village rests beneath an enormous evening sky, with warm fires and steady silhouettes on dusty paths.",
-      "style": "Desert blues, hypnotic electric guitar phrases, hand percussion, grounded bass and a warm cyclical melodic arrangement."
+      "style": "Desert blues, hypnotic electric guitar phrases, hand percussion, grounded bass and a warm cyclical melodic arrangement.",
+      "mood": "peaceful"
     },
     {
       "id": "night-drive-red-lights",
       "visual": "A low-lit car interior reflects red street lights and blurred city shapes, with a dark gritty sense of speed.",
-      "style": "Drift phonk, gritty electronic bass, clipped trap drums, cowbell motifs and a dark compressed nocturnal mix."
+      "style": "Drift phonk, gritty electronic bass, clipped trap drums, cowbell motifs and a dark compressed nocturnal mix.",
+      "mood": "melancholic"
     },
     {
       "id": "angular-city-dance",
       "visual": "A dancer makes quick intricate foot movements against a stark city wall, with abrupt changes and bright rhythmic shadows.",
-      "style": "Footwork, rapid syncopated electronic drums, chopped vocal fragments, deep bass and short interlocking rhythmic loops."
+      "style": "Footwork, rapid syncopated electronic drums, chopped vocal fragments, deep bass and short interlocking rhythmic loops.",
+      "mood": "energetic"
     },
     {
       "id": "railway-graffiti",
       "visual": "Colorful graffiti covers old railway walls beneath a soft grey sky, with worn concrete and a grounded urban atmosphere.",
-      "style": "Boom bap hip-hop, dusty sampled keys, firm kick and snare drums, rounded bass and a relaxed rhythmic vocal pocket."
+      "style": "Boom bap hip-hop, dusty sampled keys, firm kick and snare drums, rounded bass and a relaxed rhythmic vocal pocket.",
+      "mood": "nostalgic"
     },
     {
       "id": "dim-bedroom-portrait",
       "visual": "A softly lit bedroom portrait shows a thoughtful person beside a window, with close shadows and a private reflective mood.",
-      "style": "Melodic alternative rap, intimate guitar motifs, restrained trap drums, warm sub bass and expressive melodic lead vocals."
+      "style": "Melodic alternative rap, intimate guitar motifs, restrained trap drums, warm sub bass and expressive melodic lead vocals.",
+      "mood": "introspective"
     },
     {
       "id": "submerged-stone-garden",
       "visual": "An underwater stone garden is filtered through slow blue light, drifting particles and gentle distorted reflections.",
-      "style": "Underwater ambient, soft mallet tones, fluid synthesizer pads, low rounded drones and slow rippling melodic details."
+      "style": "Underwater ambient, soft mallet tones, fluid synthesizer pads, low rounded drones and slow rippling melodic details.",
+      "mood": "dreamy"
     },
     {
       "id": "illustrated-storybook",
       "visual": "A playful storybook scene shows tiny houses, winding paths, colorful gardens and curious creatures in warm afternoon light.",
-      "style": "Whimsical chamber orchestral music, playful woodwinds, pizzicato strings, soft celesta and a light changing rhythmic movement."
+      "style": "Whimsical chamber orchestral music, playful woodwinds, pizzicato strings, soft celesta and a light changing rhythmic movement.",
+      "mood": "joyful"
     }
   ]
 }

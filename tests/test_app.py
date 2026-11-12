@@ -94,7 +94,7 @@ class ProductIdentityTests(unittest.TestCase):
         self.assertIn("Auto uses 1.01 for Direct and 1.0 for Melody or Full score", script.text)
         self.assertEqual(page.text.count('class="advanced-help"'), 1)  # ABC score; sliders are model-driven
         self.assertIn('aria-label="Help for ABC score"', page.text)
-        self.assertIn(".slider:nth-child(even) .advanced-help [role=tooltip]", styles.text)
+        self.assertIn(".slider:nth-child(even of :not([hidden])) .advanced-help [role=tooltip]", styles.text)
         self.assertIn("left: 0; bottom: calc(100% + 9px)", styles.text)
 
     def test_hook_explains_why_lyrics_are_disabled(self):

@@ -199,6 +199,53 @@ Branch: `feat/lux-hook`, local changes only. The page records or uploads one loc
 - A local real-model test on Apple Metal and two YuE2 trials were completed before integration. The user accepted the melody-only arrangement. Automated and browser checks have not been run after the current model replacement.
 - Next: review the fake inference fixture and run the baseline, full offline suite, browser flow, then listen to an arrangement from the Hook page. Keep the branch local until verification and listening acceptance are complete.
 
+## Lyrics writer through an OpenAI-compatible endpoint
+
+Branch: `feat/lyrics-writer` (PR #35, rebased on `main` after #41).
+
+- Settings has a new optional "Lyrics writer" card with base URL, model,
+  API key (saved masked in `.lux/lyrics.json`, or `LUX_LYRICS_API_KEY`) and a
+  "model can read images" option. "Save and test" lists the endpoint's models.
+- Create has a "Song concept" field with Write lyrics, Regenerate and Undo.
+  With Instrumental on it stays visible and writes only the style.
+- "Write style and lyrics" first writes the whole Style of music from the
+  concept (language, genre, BPM, instruments, vocal, mood, arrangement, mix),
+  then writes the lyrics for that style. Regenerate rewrites both; Undo
+  restores both.
+- Settings finds local servers on common ports and lists the endpoint's
+  models in a dropdown. Redirects (for example http to https) are resolved
+  when listing models; a redirected write explains which URL to use.
+- Vibe writes lyrics after analysis. Each catalog direction now carries a
+  mood; the matched mood is preselected and marked "suggested". The user can
+  pick another mood or a custom theme and regenerate. "Use in Create" moves
+  the Vibe lyrics into Create.
+- Verification: baseline and full offline checks pass, with fake
+  OpenAI-compatible transports in `tests/test_lyrics.py`. The Chrome flow
+  covers Settings save/test, Create write/regenerate/undo and Vibe mood,
+  custom theme and transfer with mocked lyrics routes.
+- Review fixes (2026-11-12):
+  - A typed API key and the images option survive Settings re-renders.
+  - A saved key follows only an http to https upgrade of the same host and
+    port, and settings are saved under one lock.
+  - Unknown moods are rejected (422).
+  - Lyric cleaning accepts numbered headers ("Verse 1") and maps whole-word
+    variants ("[Final Chorus]", "[Pre Chorus 2]"). Performance notes stay out.
+  - Reasoning before a lone closing think tag is removed.
+  - Instrumental styles always keep "instrumental" within the limits, and the
+    vocal filter matches whole words ("trap" and "harmonica" are kept).
+  - Create Undo restores the style when the lyrics step fails.
+  - Vibe never replaces hand-edited lyrics automatically; an explicit
+    regenerate has one-level Undo.
+- Browser check fixes for #41: help tooltips count only visible sliders and
+  open on any focus. The Hook step checks the warning the page actually shows.
+- The audio-reactive Vibe effects step in `scripts/check_ui.py` timed out once
+  and passed on rerun (timing-sensitive, unrelated code).
+- Limitations: no streaming, no language selector in the UI yet, and no
+  check that the selected model really supports images. Prompt quality has
+  not been measured with a real endpoint yet.
+- Next step: try it with a local LM Studio or Ollama model, text-only and with
+  vision, and tune the system prompt for lyric length against the duration cap.
+
 ## Stronger glow in the Vibe listening effects
 
 Branch: `feat/lux-vibe-v0-1`.
